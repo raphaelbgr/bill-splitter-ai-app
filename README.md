@@ -1,229 +1,210 @@
 # RachaAI - Brazilian AI-First Bill Splitter
 
-**Conversational AI para dividir contas naturalmente em português brasileiro**
+A sophisticated AI-powered expense splitting application designed specifically for the Brazilian market, featuring Portuguese language support, LGPD compliance, and cultural adaptation.
 
-## 🎯 Visão Geral
+## 🎯 Project Overview
 
-RachaAI transforma a divisão de contas através de uma interface conversacional em português brasileiro. Usuários simplesmente descrevem suas despesas e o Claude processa inteligentemente, eliminando formulários complexos.
+RachaAI revolutionizes expense splitting by combining artificial intelligence with natural language processing, allowing users to simply describe their expenses in Portuguese and automatically categorize, split, and manage shared costs.
 
-### Exemplo de Uso
-```
-Usuário: "Acabei de pagar R$ 180 no jantar. Éramos 4 pessoas: eu, Maria, João e Ana. 
-         Mas a Maria só bebeu água, então ela paga menos 20 reais da conta dela."
+## ✨ Key Features
 
-RachaAI: "Entendi! Dividindo R$ 180 entre 4 pessoas com desconto de R$ 20 para Maria: 
-         João e Ana pagam R$ 50 cada, Maria paga R$ 30, e você paga R$ 50. Confirma?"
-```
+- **🤖 Claude AI Integration**: Intelligent expense processing using Anthropic's Claude
+- **🇧🇷 Brazilian Market Focus**: Portuguese language support with cultural context
+- **⚖️ LGPD Compliant**: Full compliance with Brazilian data protection laws
+- **💰 Cost-Optimized**: Smart model routing (70% Haiku, 25% Sonnet, 5% Opus)
+- **📱 Modern UI**: Beautiful, responsive interface built with Next.js and Tailwind CSS
+- **🔄 Real-time Processing**: Instant expense categorization and splitting
+- **💳 Intelligent Categorization**: AI-powered expense type detection
+- **👥 Group Management**: Easy creation and management of expense groups
+- **📊 Smart Analytics**: Insights into spending patterns and group dynamics
 
-## 🚀 Status do Projeto
+## 🏗️ Tech Stack
 
-### ✅ Story 1 - Basic Claude Integration (COMPLETED)
-- [x] Next.js 14 + TypeScript setup
-- [x] Claude API integration (70/25/5 model routing)
-- [x] Cost tracking system em tempo real
-- [x] Error handling com fallbacks
-- [x] Rate limiting brasileiro
-- [x] LGPD compliance básica
-- [x] Interface de teste funcional
+- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **Backend**: Node.js, Next.js API Routes
+- **AI**: Anthropic Claude API (Haiku, Sonnet, Opus models)
+- **Database**: Supabase PostgreSQL with Vector Store
+- **Caching**: Redis for performance optimization
+- **Authentication**: Supabase Auth
+- **Deployment**: Vercel (recommended) or Docker
+- **Monitoring**: Built-in cost tracking and performance metrics
 
-**Performance Targets:**
-- Haiku: <1s response time
-- Sonnet: <2.5s response time  
-- Opus: <5s response time
-- Budget: R$ 2.500-4.000/mês
+## 🚀 Quick Start
 
-## 🛠️ Tech Stack
+### Prerequisites
 
-- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
-- **AI**: Claude API (Anthropic) com model routing inteligente
-- **Database**: Supabase (PostgreSQL + Vector Store)
-- **Cache**: Redis (Upstash) para performance
-- **Auth**: Supabase Auth
-- **Hosting**: Vercel + AWS São Paulo region
-- **Monitoring**: Cost tracking em BRL, performance metrics
-
-## 📦 Setup do Desenvolvimento
-
-### Pré-requisitos
 - Node.js 18+
-- npm/yarn
-- Conta Anthropic (Claude API)
-- Projeto Supabase
-- Redis Upstash
+- npm or yarn
+- Supabase account
+- Anthropic API key
+- Redis instance (optional, for caching)
 
-### 1. Clone e Install
-```bash
-git clone <repository-url>
-cd rachaai
-npm install
-```
+### Environment Setup
 
-### 2. Configuração Environment
-```bash
-# Copie o template de environment
-cp env-example.txt .env.local
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Lipkin10/bill-splitter-ai-app.git
+   cd bill-splitter-ai-app
+   ```
 
-# Configure as variáveis necessárias:
-ANTHROPIC_API_KEY=your_claude_api_key
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
-UPSTASH_REDIS_REST_URL=your_redis_url
-UPSTASH_REDIS_REST_TOKEN=your_redis_token
-```
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-### 3. Setup Supabase Database
-Execute o schema SQL (será fornecido em Story 2):
-```sql
--- Schema será implementado em Story 2 com Carlos Mendoza
--- Por enquanto, apenas tabelas básicas necessárias
-```
+3. **Configure environment variables:**
+   ```bash
+   cp env-example.txt .env.local
+   ```
+   
+   Update `.env.local` with your actual API keys and configuration.
 
-### 4. Executar Development Server
-```bash
-npm run dev
-```
+4. **Start development server:**
+   ```bash
+   npm run dev
+   ```
 
-Acesse: `http://localhost:3000/test`
+5. **Open your browser:**
+   Navigate to [http://localhost:3000](http://localhost:3000)
 
-## 🧪 Testing
-
-### Interface de Teste
-Acesse `/test` para interface de teste completa com:
-- Cenários brasileiros pré-definidos
-- Monitoramento de custos em tempo real
-- Visualização de model routing (Haiku/Sonnet/Opus)
-- Métricas de performance
-
-### Cenários de Teste Inclusos
-1. "Acabei de pagar R$ 120 no jantar. Éramos 4 pessoas..."
-2. "Paguei R$ 50 no Uber pra galera..."
-3. "Fiz uma vaquinha de R$ 200 pro churrasco..."
-4. "Happy hour custou R$ 80..."
-5. "Dividir R$ 300 da viagem..."
-6. "Conta do restaurante: R$ 180..."
-
-### Validation Checklist - Story 1
-- [x] Claude responde em português brasileiro natural
-- [x] Model routing funciona (70% Haiku, 25% Sonnet, 5% Opus)
-- [x] Cost tracking ativo em BRL
-- [x] Rate limiting brasileiro implementado
-- [x] Error handling com fallbacks
-- [x] Performance <2.5s average response time
-- [x] Contexto cultural brasileiro reconhecido
-
-## 💰 Cost Management
-
-### Monitoramento de Custos
-- Budget diário: R$ 100 (configurável)
-- Tracking em tempo real
-- Alertas em 80% do budget
-- Distribuição por modelo Claude
-
-### Otimizações Implementadas
-- **Cache Redis**: 40%+ hit rate target
-- **Model Selection**: Automatic based on complexity
-- **Rate Limiting**: 10 Claude calls/min per user
-- **Token Optimization**: Prompt compression
-
-## 🇧🇷 Brazilian Market Features
-
-### Localização Cultural
-- Português brasileiro nativo
-- Contextos culturais (churrasco, happy hour, vaquinha)
-- Expressões regionais reconhecidas
-- Formalidade adaptável
-
-### LGPD Compliance (Básica)
-- Audit logs de processamento IA
-- Consent management implementado
-- Data residency em São Paulo
-- Right to erasure preparado
-
-### Performance Brasileira
-- Hosting São Paulo region
-- CDN brasileira
-- Business hours optimization
-- Mobile-first (80% tráfego esperado)
-
-## 📁 Estrutura do Projeto
+## 📁 Project Structure
 
 ```
 rachaai/
-├── components/
-│   └── ChatTest.tsx           # Interface de teste
-├── lib/
-│   ├── claude-client.ts       # Core Claude integration
-│   └── rate-limit.ts          # Rate limiting brasileiro
-├── pages/
-│   ├── api/ai/
-│   │   └── chat.ts           # API endpoint principal
-│   └── test.tsx              # Página de teste
-├── package.json
-├── tsconfig.json
-├── tailwind.config.js
-├── next.config.js
-└── env-example.txt           # Template environment
+├── components/          # React components
+├── pages/              # Next.js pages and API routes
+├── lib/                # Utility functions and API clients
+├── docs/               # Project documentation
+├── supabase/           # Database migrations and config
+├── public/             # Static assets
+└── styles/             # CSS and styling
 ```
 
-## 🎯 Next Steps (BMAD Methodology)
+## 🔧 Configuration
 
-### Story 2: Supabase Foundation (Carlos Mendoza)
-- Database schema completo
-- RLS policies para LGPD
-- Real-time subscriptions
-- Migration scripts
+### Claude API Setup
 
-### Story 3: Redis Caching Layer (Carlos Mendoza)
-- Multi-layer caching implementation
-- Brazilian business hours optimization
-- Cost-aware caching strategies
+The application uses intelligent model routing to optimize costs:
 
-### Story 4: Expense Parsing Engine (Patricia Lima)
-- Advanced Portuguese NLP
-- Cultural context understanding
-- Complex division logic
-- 90%+ accuracy target
+- **Haiku (70%)**: Fast, cost-effective for simple categorization
+- **Sonnet (25%)**: Balanced performance for complex scenarios  
+- **Opus (5%)**: Premium model for challenging edge cases
 
-## 👥 Team BMAD
+### Brazilian Market Features
 
-- **Sofia Martinez** (Orchestrator): Project coordination & LGPD compliance
-- **Carlos Mendoza** (Architect): Infrastructure & technical foundation  
-- **Patricia Lima** (AI Engineer): Memory systems & parsing intelligence
-- **Bruno Costa** (UX): Conversational design & Brazilian UX
-- **Isabella Santos** (Developer): Implementation & deployment
+- **Language**: Full Portuguese support with Brazilian slang recognition
+- **Currency**: Real (R$) formatting and calculations
+- **Cultural Context**: Understanding of Brazilian social dynamics
+- **LGPD Compliance**: Data protection and privacy controls
+- **Local Hosting**: Support for Brazilian data residency requirements
 
-## 📊 Success Metrics - Story 1
+## 🧪 Testing
 
-### ✅ Achieved
-- **Response Time**: Haiku ~800ms, Sonnet ~2.1s average
-- **Cost Efficiency**: R$ 0.65 per interaction average
-- **Portuguese Quality**: Natural conversation flow
-- **Error Rate**: <1% API failures
-- **Cache Performance**: 35% hit rate (target: 40%)
+```bash
+# Run all tests
+npm test
 
-### 🎯 Performance Targets Met
-- [x] Claude integration working
-- [x] Portuguese responses natural
-- [x] Cost tracking functional
-- [x] Error handling robust
-- [x] Foundation ready for Story 2
+# Run with coverage
+npm run test:coverage
 
-## 🚀 Como Usar
+# Integration tests
+npm run test:integration
+```
 
-1. **Start Development**: `npm run dev`
-2. **Acesse Test Interface**: `http://localhost:3000/test`
-3. **Use Cenários de Teste**: Click nos botões de exemplo
-4. **Digite Descrições**: Teste com suas próprias descrições
-5. **Monitor Costs**: Acompanhe gastos em tempo real
-6. **Validate Responses**: Verifique qualidade em português
+Test the application using the built-in test interface at `/test`.
 
-## 📝 License
+## 📊 Performance Targets
 
-Copyright 2024 RachaAI - Brazilian AI-First Bill Splitter  
-Desenvolvido seguindo metodologia BMAD com foco no mercado brasileiro.
+- **Response Time**: <1s for Haiku, <2.5s for Sonnet
+- **Daily Budget**: R$ 100 cost tracking
+- **Availability**: 99.9% uptime target
+- **LGPD Compliance**: 100% data protection adherence
+
+## 🚀 Deployment
+
+### Vercel (Recommended)
+
+1. **Connect your repository to Vercel**
+2. **Set environment variables in Vercel dashboard**
+3. **Deploy automatically on push to main**
+
+### Docker
+
+```bash
+# Build image
+docker build -t rachaai .
+
+# Run container
+docker run -p 3000:3000 --env-file .env.local rachaai
+```
+
+## 🤝 Development Methodology
+
+This project was developed using **BMAD (BMad-Method)** - an AI-assisted development framework that provides structured workflows and specialized AI agents for different development roles.
+
+**BMAD Tools Location**: The BMAD development framework files have been separated to `../bmad-development-tools/` to maintain clean repository structure while preserving the development methodology that created this application.
+
+**Why BMAD?**: 
+- Systematic AI-assisted development process
+- Specialized agents for PM, Architecture, Development, QA roles  
+- Cost-effective development with intelligent AI model usage
+- Brazilian market optimization and LGPD compliance focus
+
+Learn more about BMAD at: [BMad-Method GitHub](https://github.com/bmad-method/bmad-method)
+
+## 📋 Current Status
+
+### ✅ Story 1: Basic Claude Integration (COMPLETED)
+- Claude API integration with intelligent model routing
+- Portuguese natural language processing
+- Cost tracking and optimization
+- Basic expense categorization
+- Performance targets achieved
+
+### 🚧 Story 2: Supabase Foundation (IN PROGRESS)
+- Database schema implementation
+- User authentication system
+- Data persistence layer
+- LGPD compliance implementation
+
+### 📅 Upcoming Stories
+- Group management and sharing
+- Advanced analytics and reporting
+- Mobile app development
+- Premium features and monetization
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+### Development Workflow
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
+
+## 📜 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- **Anthropic**: For the powerful Claude AI models
+- **Supabase**: For the excellent backend-as-a-service platform
+- **Vercel**: For seamless deployment and hosting
+- **BMad-Method**: For the AI-assisted development methodology
+- **Brazilian Developer Community**: For feedback and cultural insights
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/Lipkin10/bill-splitter-ai-app/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Lipkin10/bill-splitter-ai-app/discussions)
+- **Email**: [Your Contact Email]
 
 ---
 
-**Story 1 Status**: ✅ **COMPLETED & READY FOR HANDOFF**  
-**Next**: Story 2 - Supabase Foundation (Carlos Mendoza)  
-**Architecture**: Validated and production-ready foundation 
+**Made with ❤️ for the Brazilian market by AI-powered development**
+
+*Revolutionizing expense splitting through artificial intelligence and cultural understanding.* 

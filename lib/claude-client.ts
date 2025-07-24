@@ -1,6 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { Redis } from '@upstash/redis';
 import { z } from 'zod';
+import { BrazilianNLPProcessor } from './brazilian-nlp';
+import { BrazilianCulturalContextAnalyzer } from './cultural-context';
+import { RegionalVariationProcessor } from './regional-variations';
 
 // Types and Interfaces
 export interface ConversationContext {
@@ -70,6 +73,9 @@ export class RachaAIClaudeClient {
   private exchangeRate: number;
   private dailyBudgetBRL: number;
   private costAlertThreshold: number;
+  private brazilianNLPProcessor: BrazilianNLPProcessor;
+  private culturalContextAnalyzer: BrazilianCulturalContextAnalyzer;
+  private regionalVariationProcessor: RegionalVariationProcessor;
 
   // Model pricing in USD (per 1K tokens)
   private readonly MODEL_PRICING = {
@@ -98,12 +104,7 @@ CONTEXTOS BRASILEIROS COMUNS:
 - "Pila" ou "conto" = dinheiro/reais
 
 FORMATO DE RESPOSTA:
-1. Confirme o entendimento da situação
-2. Apresente o cálculo claramente
-3. Pergunte confirmação
-4. Sugira método de pagamento quando relevante
-
-CENÁRIOS TÍPICOS: restaurante, uber, churrasco, happy hour, cinema, viagem, balada, lanchonete`;
+`;
 
   constructor() {
     // Initialize Claude client
@@ -132,6 +133,11 @@ CENÁRIOS TÍPICOS: restaurante, uber, churrasco, happy hour, cinema, viagem, ba
         expire: async () => 1,
       } as any;
     }
+
+    // Initialize Brazilian NLP processors
+    this.brazilianNLPProcessor = new BrazilianNLPProcessor();
+    this.culturalContextAnalyzer = new BrazilianCulturalContextAnalyzer();
+    this.regionalVariationProcessor = new RegionalVariationProcessor();
 
     // Load configuration
     this.exchangeRate = parseFloat(process.env.USD_TO_BRL_EXCHANGE_RATE || '5.20');
@@ -326,6 +332,97 @@ CENÁRIOS TÍPICOS: restaurante, uber, churrasco, happy hour, cinema, viagem, ba
     message: string,
     context: ConversationContext
   ): Promise<string> {
+    let enhanced = message;
+
+    try {
+      // Process message with Brazilian NLP
+      const nlpResult = await this.brazilianNLPProcessor.processText(
+        message, 
+        context.userPreferences?.region
+      );
+
+      // Analyze cultural context
+      const culturalContext = this.culturalContextAnalyzer.analyzeCulturalContext(
+        message,
+        context.userPreferences?.region as any
+      );
+
+      // Detect regional variations
+      const regionalVariations = this.regionalVariationProcessor.detectRegionalVariations(
+        message,
+        context.userPreferences?.region as any
+      );
+
+      // Build enhanced context information
+      const contextInfo: string[] = [];
+
+      // Add NLP analysis results
+      if (nlpResult.participants.length > 0) {
+        const participants = nlpResult.participants.map(p => `${p.name} (${p.count})`).join(', ');
+        contextInfo.push(`Participantes: ${participants}`);
+      }
+
+      if (nlpResult.amounts.length > 0) {
+        const amounts = nlpResult.amounts.map(a => `R$ ${a.value.toFixed(2)}`).join(', ');
+        contextInfo.push(`Valores: ${amounts}`);
+      }
+
+      if (nlpResult.totalAmount > 0) {
+        contextInfo.push(`Total: R$ ${nlpResult.totalAmount.toFixed(2)}`);
+      }
+
+      // Add cultural context
+      if (culturalContext.confidence > 0.7) {
+        contextInfo.push(`Cenário: ${culturalContext.scenario}`);
+        contextInfo.push(`Tipo de grupo: ${culturalContext.groupType}`);
+        contextInfo.push(`Região: ${culturalContext.region}`);
+        contextInfo.push(`Método de divisão: ${nlpResult.splittingMethod}`);
+      }
+
+      // Add regional variations
+      if (regionalVariations.length > 0) {
+        const variations = regionalVariations.map(v => `${v.originalTerm} → ${v.standardTerm}`).join(', ');
+        contextInfo.push(`Variações regionais: ${variations}`);
+      }
+
+      // Add user preferences
+      if (context.userPreferences) {
+        const prefInfo = [
+          `Preferência de pagamento: ${context.userPreferences.paymentPreference}`,
+          `Nível de formalidade: ${context.userPreferences.formalityLevel}`
+        ].join(' | ');
+        contextInfo.push(`Preferências: ${prefInfo}`);
+      }
+
+      // Add confidence score
+      contextInfo.push(`Confiança NLP: ${(nlpResult.confidence * 100).toFixed(1)}%`);
+
+      // Build enhanced message
+      if (contextInfo.length > 0) {
+        enhanced = `[Análise brasileira: ${contextInfo.join(' | ')}]\n\n${message}`;
+      }
+
+      // Add suggestions if confidence is low
+      if (nlpResult.confidence < 0.8 && nlpResult.suggestions.length > 0) {
+        enhanced += `\n\n[Sugestões: ${nlpResult.suggestions.join(' | ')}]`;
+      }
+
+    } catch (error) {
+      console.error('Error in Brazilian NLP processing:', error);
+      // Fallback to original enhancement
+      enhanced = this.fallbackBrazilianEnhancement(message, context);
+    }
+
+    return enhanced;
+  }
+
+  /**
+   * Fallback Brazilian context enhancement
+   */
+  private fallbackBrazilianEnhancement(
+    message: string,
+    context: ConversationContext
+  ): string {
     let enhanced = message;
 
     // Add cultural context if available

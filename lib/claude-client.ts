@@ -111,11 +111,22 @@ CENÁRIOS TÍPICOS: restaurante, uber, churrasco, happy hour, cinema, viagem, ba
       apiKey: process.env.ANTHROPIC_API_KEY!,
     });
 
-    // Initialize Redis client
-    this.redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL!,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-    });
+    // Initialize Redis client (optional for testing)
+    if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+      this.redis = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      });
+    } else {
+      // Mock Redis for testing
+      this.redis = {
+        get: async () => null,
+        setex: async () => 'OK',
+        incrbyfloat: async () => 0,
+        incr: async () => 0,
+        expire: async () => 1,
+      } as any;
+    }
 
     // Load configuration
     this.exchangeRate = parseFloat(process.env.USD_TO_BRL_EXCHANGE_RATE || '5.20');

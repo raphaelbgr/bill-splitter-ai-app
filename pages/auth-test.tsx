@@ -1,8 +1,8 @@
 import Head from 'next/head';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { createClient } from '../lib/supabase';
+import { supabase } from '../lib/supabase-pages';
 import { UserService } from '../lib/user-service';
-import { BrazilianUserProfile } from '../lib/supabase';
+import { BrazilianUserProfile } from '../lib/supabase-pages';
 import AuthForm from '../components/AuthForm';
 
 export default function AuthTestPage() {
@@ -11,7 +11,7 @@ export default function AuthTestPage() {
   const [showAuth, setShowAuth] = useState(false);
   const [userData, setUserData] = useState<any>(null);
 
-  const supabase = createClient();
+
   const userService = useMemo(() => new UserService(), []);
 
   const checkUser = useCallback(async () => {

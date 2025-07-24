@@ -1,8 +1,8 @@
-import { createClient } from './supabase'
-import { BrazilianUserProfile } from './supabase'
+import { supabase } from './supabase-pages'
+import { BrazilianUserProfile } from './supabase-pages'
 
 export class UserService {
-  private supabase = createClient()
+  private supabase = supabase
 
   /**
    * Get current user profile

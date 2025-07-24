@@ -3,6 +3,13 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   
+  // Network configuration for local development
+  serverRuntimeConfig: {
+    // Will only be available on the server side
+    hostname: '192.168.7.101',
+    port: 3004,
+  },
+  
   // Experimental features for performance
   experimental: {
     appDir: false, // Using pages router for Story 1
@@ -56,7 +63,7 @@ const nextConfig = {
   
   // Image optimization
   images: {
-    domains: ['localhost'],
+    domains: ['localhost', '192.168.7.101'],
     formats: ['image/webp', 'image/avif'],
   },
   

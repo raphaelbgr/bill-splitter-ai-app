@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '../lib/supabase'
-import { BrazilianUserProfile } from '../lib/supabase'
+import { supabase } from '../lib/supabase-pages'
+import { BrazilianUserProfile } from '../lib/supabase-pages'
 
 interface AuthFormProps {
   onAuthSuccess?: (user: BrazilianUserProfile) => void
@@ -23,7 +23,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
     dataRetention: true
   })
 
-  const supabase = createClient()
+
 
   const formatCPF = (value: string) => {
     const numbers = value.replace(/\D/g, '')

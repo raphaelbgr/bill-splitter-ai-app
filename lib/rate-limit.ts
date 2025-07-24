@@ -1,4 +1,4 @@
-import { Redis } from '@upstash/redis';
+import Redis from 'ioredis';
 import { NextApiRequest } from 'next';
 
 interface RateLimitResult {
@@ -19,8 +19,11 @@ export class RateLimiter {
 
   constructor() {
     this.redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL!,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+      host: '192.168.7.101',
+      port: 6379,
+      password: 'tjq5uxt3',
+      maxRetriesPerRequest: 3,
+      lazyConnect: true,
     });
   }
 
@@ -38,7 +41,7 @@ export class RateLimiter {
 
     try {
       // Add current request
-      await this.redis.zadd(key, { score: now, member: now });
+      await this.redis.zadd(key, now, now.toString());
       
       // Remove old entries
       await this.redis.zremrangebyscore(key, 0, windowStart);

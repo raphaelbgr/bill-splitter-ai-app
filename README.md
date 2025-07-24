@@ -75,6 +75,12 @@ rachaai/
 ├── pages/              # Next.js pages and API routes
 ├── lib/                # Utility functions and API clients
 ├── docs/               # Project documentation
+│   ├── architecture/   # System architecture and database schema
+│   ├── development/    # Frontend prompts, API docs, and user flows
+│   ├── operations/     # Deployment, monitoring, and performance
+│   ├── product/        # Epics and product planning
+│   ├── testing/        # Accessibility and testing deliverables
+│   └── ux/             # UX deliverables and wireframes
 ├── supabase/           # Database migrations and config
 ├── public/             # Static assets
 └── styles/             # CSS and styling
@@ -160,6 +166,37 @@ Learn more about BMAD at: [BMad-Method GitHub](https://github.com/bmad-method/bm
 - Cost tracking and optimization
 - Basic expense categorization
 - Performance targets achieved
+
+### ✅ Architecture Foundation (COMPLETED)
+- **System Architecture**: `docs/architecture/rachaai-architecture.md`
+- **Database Schema**: `docs/architecture/story-2-database-schema.sql`
+- **Legacy Architecture**: `docs/architecture/ai-bill-splitter-architecture.md`
+
+### ✅ Development Foundation (COMPLETED)
+- **AI Frontend Prompts**: `docs/development/rachaai-ai-frontend-prompts.md`
+- **API Documentation**: `docs/development/rachaai-api-documentation.md`
+- **Component Interactions**: `docs/development/rachaai-component-interactions.md`
+- **User Onboarding Flows**: `docs/development/rachaai-user-onboarding.md`
+
+### ✅ Operations Foundation (COMPLETED)
+- **Deployment Automation**: `docs/operations/rachaai-deployment-automation.md`
+- **Monitoring Dashboards**: `docs/operations/rachaai-monitoring-dashboards.md`
+- **Performance Optimization**: `docs/operations/rachaai-performance-optimization.md`
+
+### ✅ Testing Foundation (COMPLETED)
+- **Accessibility Testing**: `docs/testing/rachaai-accessibility-testing.md`
+- **Automated Testing Scripts**: `docs/testing/rachaai-accessibility-testing-scripts.md`
+
+### ✅ Product Foundation (COMPLETED)
+- **Epics and Roadmap**: `docs/product/rachaai-epics.md`
+
+### ✅ UX Design Foundation (COMPLETED)
+- **Core Conversational Wireframes**: `docs/ux/rachaai-conversational-wireframes.md`
+- **Interactive Prototypes**: `docs/ux/rachaai-interactive-prototypes.md`
+- **User Journey Maps**: `docs/ux/rachaai-user-journey-maps.md`
+- **Mobile App Wireframes**: `docs/ux/rachaai-mobile-app-wireframes.md`
+- **Analytics Dashboard Design**: `docs/ux/rachaai-analytics-dashboard-design.md`
+- **B2B Features UX**: `docs/ux/rachaai-b2b-features-ux.md`
 
 ### 🚧 Story 2: Supabase Foundation (IN PROGRESS)
 - Database schema implementation

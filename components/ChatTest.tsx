@@ -115,9 +115,7 @@ export default function ChatTest() {
     }
   };
 
-  const useTestScenario = (scenario: string) => {
-    setInputMessage(scenario);
-  };
+
 
   const clearChat = () => {
     setMessages([]);
@@ -192,7 +190,10 @@ export default function ChatTest() {
             {testScenarios.map((scenario, index) => (
               <button
                 key={index}
-                onClick={() => useTestScenario(scenario)}
+                onClick={() => {
+                  setInputMessage(scenario);
+                  sendMessage(scenario);
+                }}
                 className="text-left text-xs p-2 bg-white rounded border hover:bg-blue-50 transition-colors"
                 disabled={isLoading}
               >

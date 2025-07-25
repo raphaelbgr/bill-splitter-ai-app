@@ -83,20 +83,9 @@ export default function HomePage() {
               color: white;
               font-family: 'Inter', system-ui, sans-serif;
             }
-            .test-style {
-              background: red !important;
-              color: white !important;
-              padding: 20px !important;
-              text-align: center !important;
-              font-size: 24px !important;
-            }
           `
         }} />
       </Head>
-      
-      <div className="test-style">
-        🎉 CSS IS WORKING! The beautiful homepage should be visible now!
-      </div>
       
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         {/* Animated Background */}

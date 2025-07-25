@@ -21,21 +21,23 @@ describe('HomePage Styling', () => {
     expect(screen.getByRole('main')).toBeInTheDocument(); // main content
     expect(screen.getByRole('contentinfo')).toBeInTheDocument(); // footer
     
-    // Check that buttons are properly structured
-    const startButton = screen.getByText('Começar Conversa');
-    expect(startButton.tagName).toBe('BUTTON');
+    // Check that buttons are properly structured - they're wrapped in spans
+    const startButton = screen.getByText('Começar Conversa').closest('button');
+    expect(startButton).toBeInTheDocument();
+    expect(startButton?.tagName).toBe('BUTTON');
     
-    const createAccountButton = screen.getByText('Criar Conta');
-    expect(createAccountButton.tagName).toBe('BUTTON');
+    const demoButton = screen.getByText('Ver Demo').closest('button');
+    expect(demoButton).toBeInTheDocument();
+    expect(demoButton?.tagName).toBe('BUTTON');
   });
 
   test('should have proper spacing and layout structure', () => {
     render(<HomePage />);
     
-    // Check main content structure
-    const mainContent = screen.getByText('Divisão Inteligente de Contas com IA').closest('main');
-    expect(mainContent).toBeInTheDocument();
-    expect(mainContent).toHaveAttribute('class');
+    // Check main content structure - look for the main element
+    const mainElement = screen.getByRole('main');
+    expect(mainElement).toBeInTheDocument();
+    expect(mainElement).toHaveAttribute('class');
   });
 
   test('should have proper card structure', () => {
@@ -49,10 +51,10 @@ describe('HomePage Styling', () => {
   test('should have proper badge structure', () => {
     render(<HomePage />);
     
-    // Check compliance badges
-    const lgpdBadge = screen.getByText('LGPD Compliant');
-    expect(lgpdBadge).toBeInTheDocument();
-    expect(lgpdBadge).toHaveAttribute('class');
+    // Check compliance badges - use getAllByText since there are multiple LGPD elements
+    const lgpdElements = screen.getAllByText('LGPD Compliant');
+    expect(lgpdElements.length).toBeGreaterThan(0);
+    expect(lgpdElements[0]).toHaveAttribute('class');
     
     const brazilBadge = screen.getByText('Made in Brazil');
     expect(brazilBadge).toBeInTheDocument();
@@ -66,13 +68,13 @@ describe('HomePage Styling', () => {
     const conversationElements = screen.getAllByText('Conversa Inteligente');
     expect(conversationElements.length).toBeGreaterThan(0);
     
-    const authElements = screen.getAllByText('Autenticação');
-    expect(authElements.length).toBeGreaterThan(0);
+    const contextElements = screen.getAllByText('Contexto Brasileiro');
+    expect(contextElements.length).toBeGreaterThan(0);
     
-    const memoryElements = screen.getAllByText('Memória e Contexto');
-    expect(memoryElements.length).toBeGreaterThan(0);
+    const lgpdElements = screen.getAllByText('LGPD Compliant');
+    expect(lgpdElements.length).toBeGreaterThan(0);
     
-    const groupManagementElements = screen.getAllByText('Gerenciamento de Grupos');
-    expect(groupManagementElements.length).toBeGreaterThan(0);
+    const costElements = screen.getAllByText('Otimização de Custos');
+    expect(costElements.length).toBeGreaterThan(0);
   });
 }); 

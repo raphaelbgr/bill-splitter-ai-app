@@ -9,7 +9,7 @@ const createJestConfig = nextJest({
 const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
   testMatch: [
@@ -23,6 +23,9 @@ const customJestConfig = {
       tsconfig: 'tsconfig.json'
     }]
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(uncrypto|@upstash)/)'
+  ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   collectCoverageFrom: [
     'lib/**/*.{ts,tsx}',

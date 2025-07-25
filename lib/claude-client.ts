@@ -6,6 +6,7 @@ import { BrazilianNLPProcessor } from './brazilian-nlp';
 import { BrazilianCulturalContextAnalyzer } from './cultural-context';
 import { RegionalVariationProcessor } from './regional-variations';
 import { RegionalPortugueseProcessor } from './regional-portuguese';
+import { performanceOptimizer } from './performance-optimizer';
 
 // Types and Interfaces
 export interface ConversationContext {
@@ -191,6 +192,36 @@ FORMATO DE RESPOSTA:
       console.log('Skipping context validation for testing');
       // ConversationContextSchema.parse(context);
 
+      // Performance optimization: Check for cached response first
+      const cachedResponse = await performanceOptimizer.getCachedResponse(message, context, 'claude');
+      if (cachedResponse) {
+        console.log('Cache hit - returning cached response');
+        return {
+          ...cachedResponse,
+          cached: true,
+          processingTimeMs: Date.now() - startTime
+        };
+      }
+
+      // Brazilian peak hour optimization
+      const peakHourOptimization = await performanceOptimizer.optimizeForPeakHours(
+        context.userId, 
+        context.culturalContext?.region || 'BR'
+      );
+
+      // Mobile optimization
+      const mobileOptimization = await performanceOptimizer.optimizeForMobile(
+        context.userAgent || 'unknown',
+        context.networkCondition || 'medium'
+      );
+
+      // Cost optimization
+      const costOptimization = await performanceOptimizer.optimizeCosts(
+        context.userId,
+        message,
+        context
+      );
+
       // Process regional Portuguese variations and cultural context
       const regionalAnalysis = await this.regionalPortugueseProcessor.processRegionalPortuguese(
         message,
@@ -226,27 +257,21 @@ FORMATO DE RESPOSTA:
       console.log('Skipping budget check for testing');
       // await this.checkDailyBudget(context.userId);
 
-      // Skip cache check for testing
-      console.log('Skipping cache check for testing');
-      /*
-      // Check cache for similar responses
-      const cachedResponse = await this.getCachedResponse(message, context);
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      */
-
       // Skip model selection and API call for testing
       console.log('Skipping model selection and API call for testing');
       /*
-      // Select optimal model based on complexity (70/25/5 strategy)
-      const selectedModel = await this.selectOptimalModel(message, context);
+      // Select optimal model based on complexity and optimizations
+      const selectedModel = await this.selectOptimalModel(message, context, {
+        peakHour: peakHourOptimization.useFasterModel,
+        mobile: mobileOptimization.useFasterModel,
+        cost: costOptimization.useCheaperModel
+      });
 
       // Enhance message with Brazilian context
       const enhancedPrompt = await this.enhanceWithBrazilianContext(message, context);
 
-      // Prepare conversation history
-      const conversationHistory = await this.prepareConversationHistory(context);
+      // Prepare conversation history (optimized for mobile if needed)
+      const conversationHistory = await this.prepareConversationHistory(context, mobileOptimization.reduceContextLength);
 
       // Make Claude API call
       const response = await this.callClaude(

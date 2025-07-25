@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { RachaAIClaudeClient } from '../../../lib/claude-client';
 import { RateLimiter } from '../../../lib/rate-limit';
+import { performanceOptimizer } from '../../../lib/performance-optimizer';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -34,11 +35,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Get Claude response
+    // Performance optimization: Add network and device context
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const networkCondition = req.headers['x-network-condition'] as string || 'medium';
+    
+    // Get Claude response with performance optimization
     const context = {
       userId,
       conversationId: conversationId || uuidv4(),
-      messageHistory: []
+      messageHistory: [],
+      userAgent,
+      networkCondition
     };
     const response = await claudeClient.processMessage(message, context);
 

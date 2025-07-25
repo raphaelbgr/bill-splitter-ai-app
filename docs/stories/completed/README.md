@@ -14,7 +14,7 @@ This folder contains all stories that have been marked as completed (✅ COMPLET
 - **story-05-1-basic-conversation-interface-design.md** - Basic conversation interface design
 - **story-05-2-group-management-interface-design.md** - Group management interface design
 
-### Advanced Features (Stories 6-10)
+### Advanced Features (Stories 6-11)
 - **story-06-memory-system-context-retention.md** - Memory system and context retention
 - **story-07-implementation-summary.md** - Implementation summary
 - **story-07-portuguese-optimization-cultural-contexts.md** - Portuguese optimization and cultural contexts
@@ -23,6 +23,7 @@ This folder contains all stories that have been marked as completed (✅ COMPLET
 - **story-09-lgpd-compliance-implementation.md** - LGPD compliance implementation
 - **story-10-performance-optimization-caching.md** - Performance optimization and caching
 - **story-10-implementation-summary.md** - Story 10 implementation summary
+- **story-11-error-handling-edge-cases.md** - Error handling and edge cases
 
 ## Completion Criteria
 

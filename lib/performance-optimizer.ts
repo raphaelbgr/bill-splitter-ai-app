@@ -78,15 +78,48 @@ export class PerformanceOptimizer {
   };
 
   constructor() {
-    this.redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL!,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN!
-    });
+    // Initialize Redis client
+    const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+    
+    if (!redisUrl || !redisToken) {
+      console.warn('Redis configuration not found. Performance optimization features will be limited.');
+      // Create a mock Redis client for development
+      this.redis = {
+        get: async () => null,
+        setex: async () => 'OK',
+        del: async () => 1,
+        keys: async () => [],
+        ttl: async () => -1,
+        expire: async () => 1,
+        incr: async () => 1,
+        healthCheck: async () => false
+      } as any;
+    } else {
+      this.redis = new Redis({
+        url: redisUrl,
+        token: redisToken
+      });
+    }
 
-    this.supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_ANON_KEY!
-    );
+    // Initialize Supabase client
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.warn('Supabase configuration not found. Analytics features will be limited.');
+      // Create a mock Supabase client for development
+      this.supabase = {
+        from: () => ({
+          insert: async () => ({ data: null, error: null }),
+          select: async () => ({ data: [], error: null }),
+          update: async () => ({ data: null, error: null }),
+          delete: async () => ({ data: null, error: null })
+        })
+      } as any;
+    } else {
+      this.supabase = createClient(supabaseUrl, supabaseKey);
+    }
   }
 
   /**

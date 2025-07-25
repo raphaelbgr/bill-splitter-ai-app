@@ -61,6 +61,13 @@ export default function MainApp() {
       description: 'Otimização e cache',
       href: '/performance-test',
       status: '✅ Ativo'
+    },
+    {
+      id: 'b2b',
+      title: '🏢 B2B Features',
+      description: 'Recursos para restaurantes e organizadores',
+      href: '/b2b-test',
+      status: '🆕 Novo'
     }
   ];
 
@@ -113,6 +120,13 @@ export default function MainApp() {
       icon: '⚡',
       gradient: 'from-emerald-500 to-green-600',
       status: '✅ Implementado'
+    },
+    {
+      title: 'Recursos B2B',
+      description: 'Integração com restaurantes e organizadores de eventos',
+      icon: '🏢',
+      gradient: 'from-amber-500 to-orange-600',
+      status: '🆕 Novo'
     }
   ];
 
@@ -273,6 +287,14 @@ export default function MainApp() {
                   <div className="text-sm opacity-80 mt-1">Otimização e cache</div>
                 </button>
               </Link>
+              
+              <Link href="/b2b-test">
+                <button className="w-full p-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all duration-300 font-semibold text-lg shadow-2xl hover:shadow-amber-500/25 transform hover:scale-105">
+                  <div className="text-3xl mb-2">🏢</div>
+                  <div>Recursos B2B</div>
+                  <div className="text-sm opacity-80 mt-1">Restaurantes e eventos</div>
+                </button>
+              </Link>
             </div>
           </div>
 
@@ -281,7 +303,7 @@ export default function MainApp() {
             <h3 className="text-2xl font-bold text-white mb-6 text-center">Status do Sistema</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
               <div className="bg-green-500/20 rounded-xl p-4 border border-green-500/30">
-                <div className="text-3xl font-bold text-green-300 mb-2">7/7</div>
+                <div className="text-3xl font-bold text-green-300 mb-2">8/8</div>
                 <div className="text-green-200 text-sm">Features Ativas</div>
               </div>
               <div className="bg-blue-500/20 rounded-xl p-4 border border-blue-500/30">
@@ -305,10 +327,10 @@ export default function MainApp() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
               <p className="text-purple-200 mb-2">
-                © 2024 RachaAI - Aplicação Principal com Todas as Features Implementadas
+                © 2024 RachaAI - Aplicação Principal com Todas as Features Implementadas (incluindo B2B)
               </p>
               <div className="flex justify-center space-x-6 text-sm text-purple-300">
-                <span>7 Features Ativas</span>
+                <span>8 Features Ativas</span>
                 <span>•</span>
                 <span>100% Testado</span>
                 <span>•</span>

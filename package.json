@@ -17,6 +17,7 @@
     "setup:database": "node scripts/setup-database.js",
     "fix:rls": "node scripts/fix-rls.js",
     "test:complete": "node scripts/test-complete-setup.js",
+    "test:qa-validation": "node scripts/qa-test-validation.js",
     "apply:rls-fixes": "node scripts/apply-rls-fixes.js",
     "apply:rls-fixes-v2": "node scripts/apply-rls-fixes-v2.js",
     "apply:simple-rls-fix": "node scripts/apply-simple-rls-fix.js",

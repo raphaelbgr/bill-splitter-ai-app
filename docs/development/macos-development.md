@@ -104,7 +104,17 @@ npm test -- --testNamePattern="chat"
 
 # Run with coverage
 npm test -- --coverage
+
+# Run comprehensive test suite (includes integration tests)
+npm run test:complete
 ```
+
+**CRITICAL TESTING REQUIREMENTS:**
+- 100% test coverage required for all new code
+- All tests must pass before marking any task as complete
+- Mock all external dependencies (databases, APIs, etc.) in tests
+- After story completion, QA agent must validate test coverage
+- Only proceed to next story after QA confirms 100% test pass rate
 
 ---
 
@@ -184,6 +194,16 @@ npm start
 - [ ] HTTPS in production
 - [ ] CORS properly configured
 - [ ] No sensitive data in client code
+
+## Testing & QA Workflow
+
+- [ ] 100% test coverage for all new code
+- [ ] All external dependencies properly mocked
+- [ ] All tests pass before task completion
+- [ ] QA agent validates test coverage after story completion
+- [ ] Story marked with "X" only after QA confirms 100% test pass rate
+- [ ] Completion status reflected across all tracking files
+- [ ] Dev agent reactivated after successful QA validation
 
 ---
 

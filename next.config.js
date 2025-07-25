@@ -12,7 +12,13 @@ const nextConfig = {
   
   // Experimental features for performance
   experimental: {
+    appDir: false, // Using pages router for Story 1
     serverComponentsExternalPackages: ['@anthropic-ai/sdk'],
+  },
+  
+  // Environment variables
+  env: {
+    CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
   
   // Headers for Brazilian market optimization
@@ -44,6 +50,17 @@ const nextConfig = {
     ];
   },
   
+  // Redirects for Brazilian users (commented out for proper home page)
+  // async redirects() {
+  //   return [
+  //     {
+  //       source: '/',
+  //       destination: '/conversation-test', // Redirect to conversation interface
+  //       permanent: false,
+  //     },
+  //   ];
+  // },
+  
   // Image optimization
   images: {
     domains: ['localhost', '192.168.7.101'],
@@ -66,6 +83,14 @@ const nextConfig = {
   // Performance optimizations for Brazilian infrastructure
   poweredByHeader: false,
   compress: true,
+  
+  // API routes configuration
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+    responseLimit: '10mb',
+  },
 };
 
 module.exports = nextConfig; 

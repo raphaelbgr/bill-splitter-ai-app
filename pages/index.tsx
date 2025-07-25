@@ -129,16 +129,35 @@ export default function HomePage() {
                 Divida contas de forma inteligente usando IA Claude. Conformidade LGPD, 
                 interface conversacional e suporte completo ao contexto cultural brasileiro.
               </p>
-              <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6">
+              <div className="flex flex-col sm:flex-row flex-wrap justify-center space-y-4 sm:space-y-0 sm:space-x-6 gap-4">
                 <Link href="/test">
                   <button className="group relative px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all duration-300 font-semibold text-lg shadow-2xl hover:shadow-purple-500/25 transform hover:scale-105">
-                    <span className="relative z-10">Começar Conversa</span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl blur opacity-0 group-hover:opacity-75 transition-opacity duration-300"></div>
+                    <span className="relative z-10">Conversa (IA)</span>
                   </button>
                 </Link>
-                <Link href="/test">
-                  <button className="px-8 py-4 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all duration-300 font-semibold text-lg border border-white/20 backdrop-blur-sm">
-                    Ver Demo
+                <Link href="/group-test">
+                  <button className="px-8 py-4 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-xl hover:from-green-700 hover:to-teal-700 transition-all duration-300 font-semibold text-lg shadow-2xl hover:shadow-green-500/25 transform hover:scale-105">
+                    Gerenciar Grupos
+                  </button>
+                </Link>
+                <Link href="/payment-test">
+                  <button className="px-8 py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl hover:from-yellow-600 hover:to-orange-600 transition-all duration-300 font-semibold text-lg shadow-2xl hover:shadow-yellow-500/25 transform hover:scale-105">
+                    Pagamentos
+                  </button>
+                </Link>
+                <Link href="/memory-test">
+                  <button className="px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl hover:from-pink-600 hover:to-purple-600 transition-all duration-300 font-semibold text-lg shadow-2xl hover:shadow-pink-500/25 transform hover:scale-105">
+                    Memória
+                  </button>
+                </Link>
+                <Link href="/auth-test">
+                  <button className="px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl hover:from-blue-600 hover:to-indigo-600 transition-all duration-300 font-semibold text-lg shadow-2xl hover:shadow-blue-500/25 transform hover:scale-105">
+                    Autenticação
+                  </button>
+                </Link>
+                <Link href="/conversation-test">
+                  <button className="px-8 py-4 bg-gradient-to-r from-gray-700 to-gray-900 text-white rounded-xl hover:from-gray-800 hover:to-black transition-all duration-300 font-semibold text-lg shadow-2xl hover:shadow-gray-500/25 transform hover:scale-105">
+                    Conversa Básica
                   </button>
                 </Link>
               </div>

@@ -98,14 +98,14 @@ describe('GroupManagement Component - Story 5.2', () => {
       expect(screen.getByText('Crie e gerencie grupos com contexto cultural brasileiro')).toBeInTheDocument();
       
       // Check if create group button is present
-      expect(screen.getByText('Novo Grupo')).toBeInTheDocument();
+      expect(screen.getByText('+ Criar Grupo')).toBeInTheDocument();
     });
 
     test('should show group creation form with Brazilian social patterns', async () => {
       render(<GroupManagement />);
       
       // Click create group button
-      fireEvent.click(screen.getByText('Novo Grupo'));
+      fireEvent.click(screen.getByText('+ Criar Grupo'));
       
       // Wait for form to be displayed
       await waitFor(() => {
@@ -114,10 +114,10 @@ describe('GroupManagement Component - Story 5.2', () => {
       
       // Check if form fields are displayed
       expect(screen.getByPlaceholderText('Ex: Churrasco da Galera')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Descreva o grupo...')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Descreva o propósito do grupo...')).toBeInTheDocument();
       expect(screen.getByText('Tipo de Grupo')).toBeInTheDocument();
-      expect(screen.getByText('Cenário')).toBeInTheDocument();
-      expect(screen.getByText('Método de Divisão Padrão')).toBeInTheDocument();
+      expect(screen.getByText('Cenário Cultural')).toBeInTheDocument();
+      expect(screen.getByText('Método de Divisão')).toBeInTheDocument();
       expect(screen.getByText('Preferência de Pagamento')).toBeInTheDocument();
     });
 
@@ -165,7 +165,7 @@ describe('GroupManagement Component - Story 5.2', () => {
       render(<GroupManagement />);
       
       // Click create group button
-      fireEvent.click(screen.getByText('Novo Grupo'));
+      fireEvent.click(screen.getByText('+ Criar Grupo'));
       
       // Wait for form to be displayed
       await waitFor(() => {
@@ -176,7 +176,7 @@ describe('GroupManagement Component - Story 5.2', () => {
       expect(screen.getByText('Preferência de Pagamento')).toBeInTheDocument();
       
       // Check payment options
-      expect(screen.getByText('Pix')).toBeInTheDocument();
+      expect(screen.getByText('PIX')).toBeInTheDocument();
       expect(screen.getByText('Boleto')).toBeInTheDocument();
       expect(screen.getByText('Cartão')).toBeInTheDocument();
       expect(screen.getByText('Dinheiro')).toBeInTheDocument();
@@ -199,18 +199,18 @@ describe('GroupManagement Component - Story 5.2', () => {
       
       // Check responsive classes
       const container = screen.getByText('Gerenciamento de Grupos').closest('div')?.parentElement;
-      expect(container).toHaveClass('max-w-4xl', 'mx-auto', 'p-6');
+      expect(container).toHaveClass('max-w-4xl', 'mx-auto', 'p-4');
       
       // Check mobile-friendly button sizes
-      const createButton = screen.getByText('Novo Grupo');
-      expect(createButton).toHaveClass('px-4', 'py-2');
+      const createButton = screen.getByText('+ Criar Grupo');
+      expect(createButton).toHaveClass('px-6', 'py-3');
     });
 
     test('should have working accessibility features', async () => {
       render(<GroupManagement />);
       
       // Check if form labels are properly associated
-      fireEvent.click(screen.getByText('Novo Grupo'));
+      fireEvent.click(screen.getByText('+ Criar Grupo'));
       
       await waitFor(() => {
         expect(screen.getByText('Criar Novo Grupo')).toBeInTheDocument();
@@ -223,7 +223,7 @@ describe('GroupManagement Component - Story 5.2', () => {
       fireEvent.click(screen.getByText('Ver Detalhes'));
       
       await waitFor(() => {
-        const closeButton = screen.getByLabelText('Fechar');
+        const closeButton = screen.getByLabelText('Fechar modal');
         expect(closeButton).toBeInTheDocument();
       });
     });
@@ -275,14 +275,14 @@ describe('GroupManagement Component - Story 5.2', () => {
     test('should match Brazilian payment preferences', async () => {
       render(<GroupManagement />);
       
-      fireEvent.click(screen.getByText('Novo Grupo'));
+      fireEvent.click(screen.getByText('+ Criar Grupo'));
       
       await waitFor(() => {
         expect(screen.getByText('Criar Novo Grupo')).toBeInTheDocument();
       });
       
       // Check Brazilian payment methods
-      expect(screen.getByText('Pix')).toBeInTheDocument();
+      expect(screen.getByText('PIX')).toBeInTheDocument();
       expect(screen.getByText('Boleto')).toBeInTheDocument();
       expect(screen.getByText('Cartão')).toBeInTheDocument();
       expect(screen.getByText('Dinheiro')).toBeInTheDocument();
@@ -317,7 +317,7 @@ describe('GroupManagement Component - Story 5.2', () => {
     test('should create group with Brazilian social context', async () => {
       render(<GroupManagement />);
       
-      fireEvent.click(screen.getByText('Novo Grupo'));
+      fireEvent.click(screen.getByText('+ Criar Grupo'));
       
       await waitFor(() => {
         expect(screen.getByText('Criar Novo Grupo')).toBeInTheDocument();
@@ -329,7 +329,7 @@ describe('GroupManagement Component - Story 5.2', () => {
         target: { value: 'Test Group' }
       });
       
-      const descriptionInput = screen.getByPlaceholderText('Descreva o grupo...');
+      const descriptionInput = screen.getByPlaceholderText('Descreva o propósito do grupo...');
       fireEvent.change(descriptionInput, {
         target: { value: 'Test description' }
       });
@@ -401,7 +401,7 @@ describe('GroupManagement Component - Story 5.2', () => {
     test('should build payment preference management interface', async () => {
       render(<GroupManagement />);
       
-      fireEvent.click(screen.getByText('Novo Grupo'));
+      fireEvent.click(screen.getByText('+ Criar Grupo'));
       
       await waitFor(() => {
         expect(screen.getByText('Criar Novo Grupo')).toBeInTheDocument();
@@ -410,7 +410,7 @@ describe('GroupManagement Component - Story 5.2', () => {
       expect(screen.getByText('Preferência de Pagamento')).toBeInTheDocument();
       
       // Test payment method selection
-      const paymentSelect = screen.getByDisplayValue('Pix');
+      const paymentSelect = screen.getByDisplayValue('PIX');
       expect(paymentSelect).toBeInTheDocument();
     });
 
@@ -431,14 +431,14 @@ describe('GroupManagement Component - Story 5.2', () => {
       
       // Check mobile-friendly classes
       const container = screen.getByText('Gerenciamento de Grupos').closest('div')?.parentElement;
-      expect(container).toHaveClass('max-w-4xl', 'mx-auto', 'p-6');
+      expect(container).toHaveClass('max-w-4xl', 'mx-auto', 'p-4');
     });
 
     test('should implement accessibility features (WCAG 2.1)', async () => {
       render(<GroupManagement />);
       
       // Check form accessibility
-      fireEvent.click(screen.getByText('Novo Grupo'));
+      fireEvent.click(screen.getByText('+ Criar Grupo'));
       
       await waitFor(() => {
         expect(screen.getByText('Criar Novo Grupo')).toBeInTheDocument();

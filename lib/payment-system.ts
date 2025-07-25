@@ -1,5 +1,5 @@
 import { Redis } from 'ioredis';
-import { redisClient } from './redis-client';
+import { RedisCache } from './redis-client';
 
 export interface PIXKey {
   id: string;
@@ -69,9 +69,17 @@ export interface PaymentReminder {
 
 export class BrazilianPaymentSystem {
   private redis: Redis;
+  private redisCache: RedisCache;
 
   constructor() {
-    this.redis = redisClient;
+    this.redis = new Redis({
+      host: '192.168.7.101',
+      port: 6379,
+      password: 'tjq5uxt3',
+      maxRetriesPerRequest: 3,
+      lazyConnect: true,
+    });
+    this.redisCache = new RedisCache();
   }
 
   /**

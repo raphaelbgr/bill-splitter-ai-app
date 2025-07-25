@@ -1,356 +1,110 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { z } from 'zod';
+import { RachaAIClaudeClient } from '../../../lib/claude-client';
+import { RateLimiter } from '../../../lib/rate-limit';
+import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
-import { RachaAIClaudeClient, ConversationContext, ClaudeResponse } from '../../../lib/claude-client';
-import { supabase } from '../../../lib/supabase-pages';
-import { rateLimit } from '../../../lib/rate-limit';
-import { redisCache } from '../../../lib/redis-client';
 
-// Request validation schema
-const ChatRequestSchema = z.object({
-  message: z.string().min(1).max(10000),
-  conversationId: z.string().uuid(),
-  groupId: z.string().uuid().optional(),
-  culturalContext: z.object({
-    region: z.string(),
-    scenario: z.enum(['restaurante', 'uber', 'churrasco', 'happy_hour', 'viagem', 'vaquinha', 'outros']),
-    groupType: z.enum(['amigos', 'familia', 'trabalho', 'faculdade']),
-    timeOfDay: z.enum(['manha', 'almoco', 'tarde', 'jantar', 'noite'])
-  }).optional(),
-  userPreferences: z.object({
-    language: z.enum(['pt-BR', 'en']).default('pt-BR'),
-    formalityLevel: z.enum(['informal', 'formal', 'professional']).default('informal'),
-    region: z.string(),
-    paymentPreference: z.enum(['pix', 'boleto', 'cartao', 'dinheiro']).default('pix')
-  }).optional()
-});
+const claudeClient = new RachaAIClaudeClient();
+const rateLimiter = new RateLimiter();
 
-// Response type
-interface ApiResponse {
-  success: boolean;
-  data?: ClaudeResponse;
-  error?: string;
-  usage?: {
-    dailySpend: number;
-    budget: number;
-    percentageUsed: number;
-    modelDistribution: Record<string, number>;
-  };
-}
+// Initialize Supabase client for conversation storage
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+);
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<ApiResponse>
-) {
-  // Only allow POST requests
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({
-      success: false,
-      error: 'Método não permitido. Use POST.'
-    });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    const { message, userId, conversationId } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
     // Rate limiting
-    const rateLimitResult = await rateLimit(req);
+    const rateLimitResult = await rateLimiter.limitRequests(userId || 'anonymous');
     if (!rateLimitResult.success) {
-      return res.status(429).json({
-        success: false,
-        error: `Limite de requisições excedido. Tente novamente em ${rateLimitResult.resetTime} segundos.`
+      return res.status(429).json({ 
+        error: 'Rate limit exceeded', 
+        retryAfter: rateLimitResult.resetTime 
       });
     }
 
-    // Validate request body
-    const validationResult = ChatRequestSchema.safeParse(req.body);
-    if (!validationResult.success) {
-      return res.status(400).json({
-        success: false,
-        error: `Dados inválidos: ${validationResult.error.issues.map(i => i.message).join(', ')}`
-      });
-    }
-
-    const { message, conversationId, groupId, culturalContext, userPreferences } = validationResult.data;
-
-    // Verify user authentication
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    
-    // For testing purposes, allow unauthenticated requests
-    let userId = '123e4567-e89b-12d3-a456-426614174000'; // Use valid UUID
-    if (session?.user) {
-      userId = session.user.id;
-    } else {
-      console.log('No authentication found, using test user');
-    }
-    
-    // Comment out the authentication check for testing
-    /*
-    if (authError || !session?.user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Não autorizado. Faça login para continuar.'
-      });
-    }
-    */
-
-    // For testing, bypass database operations if they fail
-    let conversationData = null;
-    let conversationError = null;
-    
-    // Skip database operations for testing
-    console.log('Skipping database operations for testing');
-    
-    /*
-    try {
-      // Try to get conversation from Redis cache first
-      conversationData = await redisCache.getConversation(conversationId);
-
-      // If not in cache, load from Supabase
-      if (!conversationData) {
-        const { data, error } = await supabase
-          .from('conversations')
-          .select(`
-            id,
-            title,
-            messages (
-              id,
-              role,
-              content,
-              created_at,
-              model_used,
-              tokens_used,
-              cost_brl
-            )
-          `)
-          .eq('id', conversationId)
-          .eq('user_id', userId)
-          .single();
-        
-        conversationData = data;
-        conversationError = error;
-
-        // Cache the conversation data
-        if (data) {
-          await redisCache.setConversation(conversationId, data);
-        }
-      }
-    } catch (error) {
-      console.log('Database operation failed, continuing with test mode:', error);
-      // Continue in test mode without database
-    }
-    */
-
-    // If conversation doesn't exist, create a new one
-    if (!conversationData) {
-      console.log('Creating new conversation:', conversationId);
-      // Skip database creation for testing
-      console.log('Skipping database creation for testing');
-      /*
-      try {
-        const { error: createError } = await supabase
-          .from('conversations')
-          .insert({
-            id: conversationId,
-            user_id: userId,
-            group_id: groupId,
-            title: message.substring(0, 100), // First 100 chars as title
-            status: 'active',
-            expense_type: culturalContext?.scenario || 'outros',
-            cultural_context: culturalContext?.scenario || 'general',
-            conversation_type: 'expense_split',
-            total_tokens_used: 0,
-            total_cost_brl: 0,
-            timezone: 'America/Sao_Paulo',
-            language: 'pt-BR',
-            contains_pii: false,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            last_message_at: new Date().toISOString()
-          });
-
-        if (createError) {
-          console.error('Error creating conversation:', createError);
-          // Continue anyway, we'll create it later
-        }
-      } catch (error) {
-        console.log('Conversation creation failed, continuing in test mode:', error);
-        // Continue in test mode without database
-      }
-      */
-    }
-
-    // Get user preferences from cache or use defaults
-    let cachedPreferences = userPreferences;
-    /*
-    let cachedPreferences = await redisCache.getUserPreferences(userId);
-    if (!cachedPreferences) {
-      cachedPreferences = userPreferences;
-      await redisCache.setUserPreferences(userId, cachedPreferences);
-    }
-    */
-
-    // Get conversation context from cache
-    let cachedContext = null;
-    /*
-    let cachedContext = await redisCache.getContext(conversationId);
-    */
-    
-    // Prepare conversation context with empty message history for testing
-    const context: ConversationContext = {
+    // Get Claude response
+    const context = {
       userId,
-      conversationId,
-      groupId,
-      messageHistory: [], // Empty for testing
-      userPreferences: cachedPreferences,
-      culturalContext
+      conversationId: conversationId || uuidv4(),
+      messageHistory: []
     };
-
-    // Cache the context
-    /*
-    await redisCache.setContext(conversationId, context);
-    */
-
-    // Initialize Claude client
-    const claudeClient = new RachaAIClaudeClient();
-
-    // Process message with Claude
     const response = await claudeClient.processMessage(message, context);
 
-    // Skip database save operations for testing
-    console.log('Skipping database save operations for testing');
-    
-    /*
-    // Save user message to database
-    const { error: userMessageError } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        role: 'user',
-        content: message,
-        user_id: userId
-      });
+    // Store conversation in Supabase (Story 3 requirement)
+    if (userId) {
+      try {
+        // Store the conversation
+        const { error: conversationError } = await supabase
+          .from('conversations')
+          .upsert({
+            id: conversationId || uuidv4(),
+            user_id: userId,
+            content: message,
+            ai_response: response.content,
+            processed_at: new Date().toISOString(),
+            retention_until: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days
+            created_at: new Date().toISOString()
+          });
 
-    if (userMessageError) {
-      console.error('Error saving user message:', userMessageError);
-    }
-
-    // Save Claude response to database
-    const { error: responseError } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        role: 'assistant',
-        content: response.content,
-        model_used: response.modelUsed,
-        tokens_used: response.tokensUsed.total,
-        cost_brl: response.costBRL,
-        processing_time_ms: response.processingTimeMs,
-        confidence_score: response.confidence,
-        user_id: userId
-      });
-
-    if (responseError) {
-      console.error('Error saving response:', responseError);
-    }
-
-    // Update conversation cache with new message
-    if (conversationData) {
-      const updatedMessages = [
-        ...(conversationData.messages || []),
-        {
-          id: uuidv4(),
-          role: 'assistant',
-          content: response.content,
-          created_at: new Date().toISOString(),
-          model_used: response.modelUsed,
-          tokens_used: response.tokensUsed.total,
-          cost_brl: response.costBRL
+        if (conversationError) {
+          console.error('Error storing conversation:', conversationError);
         }
-      ];
-      
-      const updatedConversation = {
-        ...conversationData,
-        messages: updatedMessages
-      };
-      
-      await redisCache.setConversation(conversationId, updatedConversation);
-    }
 
-    // Update conversation metadata
-    if (conversationData) {
-      const { error: updateError } = await supabase
-        .from('conversations')
-        .update({
-          updated_at: new Date().toISOString(),
-          last_message_at: new Date().toISOString(),
-          total_tokens_used: (conversationData.total_tokens_used || 0) + response.tokensUsed.total,
-          total_cost_brl: (conversationData.total_cost_brl || 0) + response.costBRL
-        })
-        .eq('id', conversationId);
+        // Store individual messages for better structure
+        const { error: messageError } = await supabase
+          .from('messages')
+          .insert([
+            {
+              conversation_id: conversationId || uuidv4(),
+              user_id: userId,
+              content: message,
+              message_type: 'user',
+              created_at: new Date().toISOString()
+            },
+            {
+              conversation_id: conversationId || uuidv4(),
+              user_id: userId,
+              content: response.content,
+              message_type: 'ai',
+              created_at: new Date().toISOString()
+            }
+          ]);
 
-      if (updateError) {
-        console.error('Error updating conversation:', updateError);
+        if (messageError) {
+          console.error('Error storing messages:', messageError);
+        }
+
+      } catch (storageError) {
+        console.error('Error storing conversation in Supabase:', storageError);
+        // Don't fail the request if storage fails
       }
     }
-    */
 
-    // Log LGPD compliance
-    await supabase
-      .from('lgpd_audit_log')
-      .insert({
-        user_id: userId,
-        operation_type: 'ai_processing',
-        data_categories: ['conversations', 'messages'],
-        legal_basis: 'consent',
-        purpose: 'Processamento de IA para divisão de contas',
-        ip_address: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-        user_agent: req.headers['user-agent'],
-        ai_model_used: response.modelUsed,
-        contains_sensitive_data: false,
-        processing_duration_ms: response.processingTimeMs
-      });
-
-    // Get current usage stats
-    const usageStats = await claudeClient.getUsageStats();
-
-    // Return successful response
     return res.status(200).json({
-      success: true,
-      data: response,
-      usage: usageStats
+      content: response.content,
+      model: response.modelUsed,
+      tokens: response.tokensUsed,
+      cost: response.costBRL,
+      conversationId: conversationId || uuidv4()
     });
 
   } catch (error) {
     console.error('Chat API error:', error);
-
-    // Handle specific error types
-    if (error instanceof Error) {
-      if (error.message.includes('orçamento')) {
-        return res.status(429).json({
-          success: false,
-          error: error.message
-        });
-      }
-
-      if (error.message.includes('rate limit')) {
-        return res.status(429).json({
-          success: false,
-          error: 'Muitas requisições. Aguarde um momento e tente novamente.'
-        });
-      }
-    }
-
-    return res.status(500).json({
-      success: false,
-      error: 'Erro interno do servidor. Tente novamente em alguns instantes.'
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     });
   }
-}
-
-// Export config for larger request body sizes
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
 } 

@@ -1,9 +1,11 @@
+import '@anthropic-ai/sdk/shims/node';
 import Anthropic from '@anthropic-ai/sdk';
 import { Redis } from '@upstash/redis';
 import { z } from 'zod';
 import { BrazilianNLPProcessor } from './brazilian-nlp';
 import { BrazilianCulturalContextAnalyzer } from './cultural-context';
 import { RegionalVariationProcessor } from './regional-variations';
+import { RegionalPortugueseProcessor } from './regional-portuguese';
 
 // Types and Interfaces
 export interface ConversationContext {
@@ -76,6 +78,7 @@ export class RachaAIClaudeClient {
   private brazilianNLPProcessor: BrazilianNLPProcessor;
   private culturalContextAnalyzer: BrazilianCulturalContextAnalyzer;
   private regionalVariationProcessor: RegionalVariationProcessor;
+  private regionalPortugueseProcessor: RegionalPortugueseProcessor;
 
   // Model pricing in USD (per 1K tokens)
   private readonly MODEL_PRICING = {
@@ -94,6 +97,7 @@ REGRAS FUNDAMENTAIS:
 - Use contexto cultural brasileiro (churrasco, happy hour, galera, etc.)
 - Mantenha respostas concisas (máximo 150 palavras)
 - Use emojis apropriados mas com moderação
+- Adapte o tom à região detectada do usuário
 
 CONTEXTOS BRASILEIROS COMUNS:
 - "Galera" = grupo de pessoas
@@ -102,6 +106,25 @@ CONTEXTOS BRASILEIROS COMUNS:
 - "Rodízio" = cada pessoa paga uma rodada
 - PIX é método preferido de pagamento
 - "Pila" ou "conto" = dinheiro/reais
+
+VARIACÕES REGIONAIS:
+- São Paulo: mais formal, "cara", "tipo", "beleza"
+- Rio de Janeiro: casual, "molecada", "beleza", "valeu"
+- Minas Gerais: acolhedor, "rapaziada", "valeu"
+- Bahia: expressivo, "meninada", "massa"
+- Pernambuco: tradicional, "rapaziada", "valeu"
+- Paraná: direto, "beleza", "valeu"
+- Rio Grande do Sul: "bah", "tchê", "top"
+
+EXPRESSÕES REGIONAIS:
+- "Massa" = legal/bom (comum em várias regiões)
+- "Da hora" = muito bom
+- "Show" = ótimo
+- "Top" = excelente
+- "Demais" = muito bom
+- "Valeu" = obrigado/thanks
+- "Beleza" = tudo bem/okay
+- "Tranquilo" = sem problema
 
 FORMATO DE RESPOSTA:
 `;
@@ -138,6 +161,7 @@ FORMATO DE RESPOSTA:
     this.brazilianNLPProcessor = new BrazilianNLPProcessor();
     this.culturalContextAnalyzer = new BrazilianCulturalContextAnalyzer();
     this.regionalVariationProcessor = new RegionalVariationProcessor();
+    this.regionalPortugueseProcessor = new RegionalPortugueseProcessor();
 
     // Load configuration
     this.exchangeRate = parseFloat(process.env.USD_TO_BRL_EXCHANGE_RATE || '5.20');
@@ -166,6 +190,20 @@ FORMATO DE RESPOSTA:
       // Temporarily skip context validation for testing
       console.log('Skipping context validation for testing');
       // ConversationContextSchema.parse(context);
+
+      // Process regional Portuguese variations and cultural context
+      const regionalAnalysis = await this.regionalPortugueseProcessor.processRegionalPortuguese(
+        message,
+        context.userPreferences?.region as any
+      );
+      
+      console.log('Regional analysis:', {
+        detectedRegion: regionalAnalysis.detectedRegion,
+        regionalExpressions: regionalAnalysis.regionalExpressions.length,
+        culturalReferences: regionalAnalysis.culturalReferences.length,
+        codeSwitching: regionalAnalysis.codeSwitching.length,
+        confidence: regionalAnalysis.confidence
+      });
 
       // Check if Claude client is available
       if (!this.claude) {
@@ -353,6 +391,12 @@ FORMATO DE RESPOSTA:
         context.userPreferences?.region as any
       );
 
+      // Process regional Portuguese variations and cultural context
+      const regionalAnalysis = await this.regionalPortugueseProcessor.processRegionalPortuguese(
+        message,
+        context.userPreferences?.region as any
+      );
+
       // Build enhanced context information
       const contextInfo: string[] = [];
 
@@ -384,6 +428,31 @@ FORMATO DE RESPOSTA:
         const variations = regionalVariations.map(v => `${v.originalTerm} → ${v.standardTerm}`).join(', ');
         contextInfo.push(`Variações regionais: ${variations}`);
       }
+
+      // Add regional Portuguese analysis
+      if (regionalAnalysis.regionalExpressions.length > 0) {
+        const expressions = regionalAnalysis.regionalExpressions
+          .map(exp => `${exp.original} (${exp.region})`)
+          .join(', ');
+        contextInfo.push(`Expressões regionais: ${expressions}`);
+      }
+
+      if (regionalAnalysis.culturalReferences.length > 0) {
+        const references = regionalAnalysis.culturalReferences
+          .map(ref => `${ref.reference} (${ref.type})`)
+          .join(', ');
+        contextInfo.push(`Referências culturais: ${references}`);
+      }
+
+      if (regionalAnalysis.codeSwitching.length > 0) {
+        const switching = regionalAnalysis.codeSwitching
+          .map(cs => `${cs.englishPart}`)
+          .join(', ');
+        contextInfo.push(`Code-switching: ${switching}`);
+      }
+
+      // Add regional confidence
+      contextInfo.push(`Confiança regional: ${(regionalAnalysis.confidence * 100).toFixed(1)}%`);
 
       // Add user preferences
       if (context.userPreferences) {

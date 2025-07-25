@@ -22,11 +22,11 @@ describe('HomePage Styling', () => {
     expect(screen.getByRole('contentinfo')).toBeInTheDocument(); // footer
     
     // Check that buttons are properly structured - they're wrapped in spans
-    const startButton = screen.getByText('Começar Conversa').closest('button');
+    const startButton = screen.getByText('Conversa (IA)').closest('button');
     expect(startButton).toBeInTheDocument();
     expect(startButton?.tagName).toBe('BUTTON');
     
-    const demoButton = screen.getByText('Ver Demo').closest('button');
+    const demoButton = screen.getByText('Gerenciar Grupos').closest('button');
     expect(demoButton).toBeInTheDocument();
     expect(demoButton?.tagName).toBe('BUTTON');
   });

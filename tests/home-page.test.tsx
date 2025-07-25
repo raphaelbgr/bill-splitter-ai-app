@@ -58,8 +58,8 @@ describe('HomePage Component', () => {
     render(<HomePage />);
     
     // Check action buttons
-    expect(screen.getByText('Começar Conversa')).toBeInTheDocument();
-    expect(screen.getByText('Ver Demo')).toBeInTheDocument();
+    expect(screen.getByText('Conversa (IA)')).toBeInTheDocument();
+    expect(screen.getByText('Gerenciar Grupos')).toBeInTheDocument();
   });
 
   test('should display compliance badges', () => {

@@ -164,7 +164,7 @@ export default function GroupTest() {
               </div>
               
               <div className="p-4 bg-purple-50 rounded-lg">
-                <h3 className="font-semibold text-purple-900 mb-2">"Depois acerto"</h3>
+                <h3 className="font-semibold text-purple-900 mb-2">&ldquo;Depois acerto&rdquo;</h3>
                 <p className="text-purple-800 text-sm">
                   Acompanhamento informal de dívidas. Muito comum no Brasil.
                 </p>

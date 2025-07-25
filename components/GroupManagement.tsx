@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { GroupService, GroupWithContext, CreateGroupData } from '../lib/group-service'
-import { BrazilianCulturalContext } from '../lib/cultural-context'
+import { BrazilianCulturalContext, BrazilianScenario, BrazilianGroupType } from '../lib/cultural-context'
 
 interface GroupManagementProps {
   onGroupCreated?: (group: GroupWithContext) => void
@@ -15,30 +15,31 @@ export default function GroupManagement({ onGroupCreated, onGroupUpdated }: Grou
   const [isCreating, setIsCreating] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [realTimeUpdates, setRealTimeUpdates] = useState<{[key: string]: boolean}>({})
   
   // Form states
   const [groupName, setGroupName] = useState('')
   const [groupDescription, setGroupDescription] = useState('')
   const [groupType, setGroupType] = useState<'casual' | 'recurring' | 'event' | 'travel'>('casual')
+  const [scenario, setScenario] = useState<BrazilianScenario>('restaurante')
   const [splitMethod, setSplitMethod] = useState<'equal' | 'weighted' | 'custom'>('equal')
+  const [paymentPreference, setPaymentPreference] = useState<'pix' | 'boleto' | 'cartao' | 'dinheiro'>('pix')
   const [suggestions, setSuggestions] = useState<string[]>([])
 
-  const groupService = new GroupService()
+  const groupService = useMemo(() => new GroupService(), [])
 
-  useEffect(() => {
-    loadGroups()
-  }, [])
-
-  useEffect(() => {
-    if (groupName || groupDescription) {
-      const context = `${groupName} ${groupDescription}`.trim()
-      if (context) {
-        setSuggestions(groupService.getGroupSuggestions(context))
-      }
+  // Helper function to map group types to cultural context
+  const mapGroupTypeToCultural = (groupType: 'casual' | 'recurring' | 'event' | 'travel'): BrazilianGroupType => {
+    switch (groupType) {
+      case 'casual': return 'amigos'
+      case 'recurring': return 'trabalho'
+      case 'event': return 'familia'
+      case 'travel': return 'amigos'
+      default: return 'amigos'
     }
-  }, [groupName, groupDescription])
+  }
 
-  const loadGroups = async () => {
+  const loadGroups = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     
@@ -50,7 +51,40 @@ export default function GroupManagement({ onGroupCreated, onGroupUpdated }: Grou
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [groupService])
+
+  useEffect(() => {
+    loadGroups()
+  }, [loadGroups])
+
+  // Real-time updates simulation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRealTimeUpdates(prev => {
+        const updates = { ...prev }
+        groups.forEach(group => {
+          if (Math.random() > 0.8) { // 20% chance of update
+            updates[group.id] = true
+            setTimeout(() => {
+              setRealTimeUpdates(current => ({ ...current, [group.id]: false }))
+            }, 3000)
+          }
+        })
+        return updates
+      })
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [groups])
+
+  useEffect(() => {
+    if (groupName || groupDescription) {
+      const context = `${groupName} ${groupDescription}`.trim()
+      if (context) {
+        setSuggestions(groupService.getGroupSuggestions(context))
+      }
+    }
+  }, [groupName, groupDescription, groupService])
 
   const handleCreateGroup = async () => {
     if (!groupName.trim()) {
@@ -66,7 +100,17 @@ export default function GroupManagement({ onGroupCreated, onGroupUpdated }: Grou
         name: groupName.trim(),
         description: groupDescription.trim() || undefined,
         group_type: groupType,
-        default_split_method: splitMethod
+        default_split_method: splitMethod,
+        cultural_context: {
+          scenario,
+          groupType: mapGroupTypeToCultural(groupType),
+          region: 'sao_paulo', // Default, can be enhanced with user location
+          timeOfDay: 'jantar',
+          formalityLevel: 'informal',
+          paymentMethod: paymentPreference,
+          socialDynamics: splitMethod === 'equal' ? 'igual' : 'complexo',
+          confidence: 0.8
+        }
       }
 
       const newGroup = await groupService.createGroup(groupData)
@@ -140,7 +184,9 @@ export default function GroupManagement({ onGroupCreated, onGroupUpdated }: Grou
     setGroupName('')
     setGroupDescription('')
     setGroupType('casual')
+    setScenario('restaurante')
     setSplitMethod('equal')
+    setPaymentPreference('pix')
     setSuggestions([])
   }
 
@@ -176,6 +222,44 @@ export default function GroupManagement({ onGroupCreated, onGroupUpdated }: Grou
       custom: 'Personalizado'
     }
     return labels[method] || method
+  }
+
+  const getPaymentMethodLabel = (method: string) => {
+    const labels: Record<string, string> = {
+      pix: 'Pix',
+      boleto: 'Boleto',
+      cartao: 'Cartão',
+      dinheiro: 'Dinheiro'
+    }
+    return labels[method] || method
+  }
+
+  const getScenarioLabel = (scenario: BrazilianScenario) => {
+    const labels: Record<string, string> = {
+      restaurante: 'Restaurante',
+      bar: 'Bar',
+      cafe: 'Café',
+      outros: 'Outros'
+    }
+    return labels[scenario] || scenario
+  }
+
+  const getCulturalGroupTypeLabel = (groupType: BrazilianGroupType) => {
+    const labels: Record<string, string> = {
+      amigos: 'Amigos',
+      trabalho: 'Trabalho',
+      familia: 'Família',
+      outros: 'Outros'
+    }
+    return labels[groupType] || groupType
+  }
+
+  const getSocialDynamicsLabel = (socialDynamics: string) => {
+    const labels: Record<string, string> = {
+      igual: 'Igual',
+      complexo: 'Complexo'
+    }
+    return labels[socialDynamics] || socialDynamics
   }
 
   return (
@@ -272,6 +356,22 @@ export default function GroupManagement({ onGroupCreated, onGroupUpdated }: Grou
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cenário
+                </label>
+                <select
+                  value={scenario}
+                  onChange={(e) => setScenario(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="restaurante">Restaurante</option>
+                  <option value="bar">Bar</option>
+                  <option value="cafe">Café</option>
+                  <option value="outros">Outros</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Método de Divisão Padrão
                 </label>
                 <select
@@ -282,6 +382,22 @@ export default function GroupManagement({ onGroupCreated, onGroupUpdated }: Grou
                   <option value="equal">Igual</option>
                   <option value="weighted">Ponderado</option>
                   <option value="custom">Personalizado</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Preferência de Pagamento
+                </label>
+                <select
+                  value={paymentPreference}
+                  onChange={(e) => setPaymentPreference(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="pix">Pix</option>
+                  <option value="boleto">Boleto</option>
+                  <option value="cartao">Cartão</option>
+                  <option value="dinheiro">Dinheiro</option>
                 </select>
               </div>
             </div>
@@ -334,40 +450,55 @@ export default function GroupManagement({ onGroupCreated, onGroupUpdated }: Grou
         ) : (
           <div className="divide-y divide-gray-200">
             {groups.map((group) => (
-              <div key={group.id} className="p-6">
-                <div className="flex justify-between items-start">
+              <div key={group.id} className="p-4 md:p-6 relative">
+                {/* Real-time update indicator */}
+                {realTimeUpdates[group.id] && (
+                  <div className="absolute top-2 right-2 flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-green-600">Atualizando...</span>
+                  </div>
+                )}
+                
+                <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-2">
                       <h3 className="text-lg font-semibold text-gray-900">
                         {group.name}
                       </h3>
-                      <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                        {getCulturalContextLabel(group.cultural_context)}
-                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                          {getCulturalContextLabel(group.cultural_context)}
+                        </span>
+                        <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                          {getGroupTypeLabel(group.group_type)}
+                        </span>
+                      </div>
                     </div>
                     
                     {group.description && (
-                      <p className="text-gray-600 mb-3">{group.description}</p>
+                      <p className="text-gray-600 mb-3 text-sm md:text-base">{group.description}</p>
                     )}
                     
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <span>Tipo: {getGroupTypeLabel(group.group_type)}</span>
+                    <div className="grid grid-cols-2 md:flex md:items-center md:space-x-4 text-xs md:text-sm text-gray-500">
                       <span>Divisão: {getSplitMethodLabel(group.default_split_method)}</span>
                       <span>Membros: {group.members?.length || 0}</span>
-                      <span>Criado: {new Date(group.created_at).toLocaleDateString('pt-BR')}</span>
+                      <span className="col-span-2 md:col-span-1">Criado: {new Date(group.created_at).toLocaleDateString('pt-BR')}</span>
+                      {group.cultural_context?.paymentMethod && (
+                        <span className="col-span-2 md:col-span-1">Pagamento: {getPaymentMethodLabel(group.cultural_context.paymentMethod)}</span>
+                      )}
                     </div>
                   </div>
                   
-                  <div className="flex space-x-2">
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                     <button
                       onClick={() => setCurrentGroup(group)}
-                      className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                      className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       Ver Detalhes
                     </button>
                     <button
                       onClick={() => handleArchiveGroup(group.id)}
-                      className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                      className="px-3 py-2 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
                     >
                       Arquivar
                     </button>
@@ -383,14 +514,15 @@ export default function GroupManagement({ onGroupCreated, onGroupUpdated }: Grou
       {currentGroup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-4 md:p-6 border-b border-gray-200">
               <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-lg md:text-xl font-semibold text-gray-900">
                   Detalhes do Grupo
                 </h2>
                 <button
                   onClick={() => setCurrentGroup(null)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 p-1"
+                  aria-label="Fechar"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -399,18 +531,43 @@ export default function GroupManagement({ onGroupCreated, onGroupUpdated }: Grou
               </div>
             </div>
             
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               <div className="space-y-4">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
                     {currentGroup.name}
                   </h3>
                   {currentGroup.description && (
-                    <p className="text-gray-600">{currentGroup.description}</p>
+                    <p className="text-gray-600 text-sm md:text-base">{currentGroup.description}</p>
                   )}
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Cultural Context Section */}
+                {currentGroup.cultural_context && (
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h4 className="text-md font-semibold text-blue-900 mb-3">Contexto Cultural Brasileiro</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="font-medium text-blue-800">Cenário:</span>
+                        <span className="ml-2 text-blue-700">{getScenarioLabel(currentGroup.cultural_context.scenario)}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-blue-800">Tipo de Grupo:</span>
+                        <span className="ml-2 text-blue-700">{getCulturalGroupTypeLabel(currentGroup.cultural_context.groupType)}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-blue-800">Método de Pagamento:</span>
+                        <span className="ml-2 text-blue-700">{getPaymentMethodLabel(currentGroup.cultural_context.paymentMethod)}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-blue-800">Dinâmica Social:</span>
+                        <span className="ml-2 text-blue-700">{getSocialDynamicsLabel(currentGroup.cultural_context.socialDynamics)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Tipo
@@ -425,9 +582,9 @@ export default function GroupManagement({ onGroupCreated, onGroupUpdated }: Grou
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Contexto Cultural
+                      Status
                     </label>
-                    <p className="text-gray-900">{getCulturalContextLabel(currentGroup.cultural_context)}</p>
+                    <p className="text-gray-900 capitalize">{currentGroup.status}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -439,12 +596,28 @@ export default function GroupManagement({ onGroupCreated, onGroupUpdated }: Grou
                 
                 {currentGroup.members && currentGroup.members.length > 0 && (
                   <div>
-                    <h4 className="text-md font-semibold text-gray-900 mb-2">Membros</h4>
-                    <div className="space-y-2">
+                    <h4 className="text-md font-semibold text-gray-900 mb-3">Membros do Grupo</h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
                       {currentGroup.members.map((member) => (
-                        <div key={member.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                          <span className="text-gray-900">ID: {member.user_id}</span>
-                          <span className="text-sm text-gray-500 capitalize">{member.role}</span>
+                        <div key={member.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-medium text-blue-600">
+                                {member.user_id.substring(0, 2).toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-gray-900">ID: {member.user_id.substring(0, 8)}...</span>
+                              <span className="block text-xs text-gray-500 capitalize">{member.role}</span>
+                            </div>
+                          </div>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            member.status === 'active' ? 'bg-green-100 text-green-800' :
+                            member.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {member.status}
+                          </span>
                         </div>
                       ))}
                     </div>

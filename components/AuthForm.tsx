@@ -55,100 +55,64 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
 
     try {
       if (isSignUp) {
-        // Sign up
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              display_name: displayName,
-              phone,
-              cpf: cpf.replace(/\D/g, ''), // Store only numbers
-              timezone: 'America/Sao_Paulo',
-              language: 'pt-BR',
-              currency: 'BRL',
-              consent_version: '2024.1',
-              marketing_consent: consent.marketing,
-              ai_processing_consent: consent.aiProcessing,
-              notification_preferences: {},
-              ai_preferences: {}
-            }
-          }
+        // Sign up using API route
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            display_name: displayName,
+            phone,
+            cpf,
+            timezone: 'America/Sao_Paulo',
+            language: 'pt-BR',
+            currency: 'BRL',
+            consent_version: '2024.1',
+            marketing_consent: consent.marketing,
+            ai_processing_consent: consent.aiProcessing,
+            notification_preferences: {},
+            ai_preferences: {}
+          }),
         })
 
-        if (authError) throw authError
+        const data = await response.json()
 
-        if (authData.user) {
-          // Create user profile
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .insert({
-              id: authData.user.id,
-              display_name: displayName,
-              email,
-              phone,
-              cpf: cpf.replace(/\D/g, ''),
-              timezone: 'America/Sao_Paulo',
-              language: 'pt-BR',
-              currency: 'BRL',
-              consent_version: '2024.1',
-              marketing_consent: consent.marketing,
-              ai_processing_consent: consent.aiProcessing,
-              notification_preferences: {},
-              ai_preferences: {}
-            })
+        if (!data.success) {
+          throw new Error(data.error || 'Erro no cadastro')
+        }
 
-          if (profileError) throw profileError
-
-          // Create consent records
-          const consentRecords = []
-          if (consent.marketing) {
-            consentRecords.push({
-              user_id: authData.user.id,
-              consent_type: 'marketing',
-              consent_granted: true,
-              consent_version: '2024.1',
-              purpose: 'Envio de comunicações de marketing sobre novos recursos e funcionalidades',
-              legal_basis: 'Consentimento',
-              expires_at: new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000).toISOString() // 2 years
-            })
-          }
-
-          consentRecords.push({
-            user_id: authData.user.id,
-            consent_type: 'ai_processing',
-            consent_granted: consent.aiProcessing,
-            consent_version: '2024.1',
-            purpose: 'Processamento de IA para assistência em divisão de contas e conversas',
-            legal_basis: 'Interesse Legítimo',
-            expires_at: new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000).toISOString()
-          })
-
-          if (consentRecords.length > 0) {
-            const { error: consentError } = await supabase
-              .from('consent_records')
-              .insert(consentRecords)
-
-            if (consentError) throw consentError
-          }
-
-          onAuthSuccess?.(authData.user as any)
+        if (data.data?.user) {
+          onAuthSuccess?.(data.data.user as any)
         }
       } else {
-        // Sign in
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
+        // Sign in using API route
+        const response = await fetch('/api/auth/signin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            password
+          }),
         })
 
-        if (error) throw error
+        const data = await response.json()
 
-        if (data.user) {
-          onAuthSuccess?.(data.user as any)
+        if (!data.success) {
+          throw new Error(data.error || 'Erro no login')
+        }
+
+        if (data.data?.user) {
+          onAuthSuccess?.(data.data.user as any)
         }
       }
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error) {
+      console.error('Auth error:', error)
+      setError(error instanceof Error ? error.message : 'Erro desconhecido')
     } finally {
       setLoading(false)
     }

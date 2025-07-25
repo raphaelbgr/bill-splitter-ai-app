@@ -21,7 +21,7 @@ export default function AuthTestPage() {
       setUser(profile);
     }
     setLoading(false);
-  }, [supabase.auth, userService]);
+  }, [userService]);
 
   useEffect(() => {
     checkUser();

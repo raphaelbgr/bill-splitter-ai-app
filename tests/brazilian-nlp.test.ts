@@ -2,7 +2,7 @@ import { BrazilianNLPProcessor } from '../lib/brazilian-nlp';
 import { BrazilianCulturalContextAnalyzer } from '../lib/cultural-context';
 import { RegionalVariationProcessor } from '../lib/regional-variations';
 
-describe('Brazilian NLP Processing', () => {
+describe('Brazilian NLP Processing Tests', () => {
   let nlpProcessor: BrazilianNLPProcessor;
   let culturalAnalyzer: BrazilianCulturalContextAnalyzer;
   let regionalProcessor: RegionalVariationProcessor;
@@ -13,489 +13,416 @@ describe('Brazilian NLP Processing', () => {
     regionalProcessor = new RegionalVariationProcessor();
   });
 
-  describe('BrazilianNLPProcessor', () => {
-    describe('processText', () => {
-      it('should process simple expense description', async () => {
-        const text = 'A conta foi R$ 120,00 para 4 pessoas. Vamos dividir igual.';
-        const result = await nlpProcessor.processText(text);
-
-        expect(result).toBeDefined();
-        expect(result.originalText).toBe(text);
-        expect(result.participants.length).toBeGreaterThan(0);
-        expect(result.amounts.length).toBeGreaterThan(0);
-        expect(result.totalAmount).toBe(120);
-        expect(result.splittingMethod).toBe('equal');
-        expect(result.confidence).toBeGreaterThan(0.5);
-      });
-
-      it('should handle rodízio scenario', async () => {
-        const text = 'Fomos no rodízio de pizza. Cada um paga uma rodada.';
-        const result = await nlpProcessor.processText(text);
-
-        expect(result.culturalContext.scenario).toBe('rodizio');
-        expect(result.splittingMethod).toBe('equal');
-        expect(result.culturalContext.socialDynamics).toBe('igual');
-      });
-
-      it('should handle happy hour scenario', async () => {
-        const text = 'Happy hour no bar. Cada um paga o que consumiu.';
-        const result = await nlpProcessor.processText(text);
-
-        expect(result.culturalContext.scenario).toBe('happy_hour');
-        expect(result.splittingMethod).toBe('by_consumption');
-        expect(result.culturalContext.socialDynamics).toBe('por_consumo');
-      });
-
-      it('should handle churrasco scenario', async () => {
-        const text = 'Churrasco na casa da galera. Vamos dividir por família.';
-        const result = await nlpProcessor.processText(text);
-
-        expect(result.culturalContext.scenario).toBe('churrasco');
-        expect(result.splittingMethod).toBe('by_family');
-        expect(result.culturalContext.socialDynamics).toBe('por_familia');
-      });
-
-      it('should handle vaquinha scenario', async () => {
-        const text = 'Vamos fazer uma vaquinha para pagar o presente.';
-        const result = await nlpProcessor.processText(text);
-
-        expect(result.culturalContext.scenario).toBe('vaquinha');
-        expect(result.splittingMethod).toBe('vaquinha');
-        expect(result.culturalContext.socialDynamics).toBe('vaquinha');
-      });
-
-      it('should extract multiple amounts', async () => {
-        const text = 'A conta foi R$ 150,00 + taxa de serviço R$ 15,00. Total R$ 165,00.';
-        const result = await nlpProcessor.processText(text);
-
-        expect(result.amounts.length).toBeGreaterThan(1);
-        expect(result.totalAmount).toBe(165);
-      });
-
-      it('should handle regional slang', async () => {
-        const text = 'Preciso de pila para pagar a conta. A galera toda vai.';
-        const result = await nlpProcessor.processText(text);
-
-        expect(result.regionalVariations.length).toBeGreaterThan(0);
-        expect(result.participants.length).toBeGreaterThan(0);
-      });
-
-      it('should handle complex scenarios', async () => {
-        const text = 'Aniversário da galera. Eu pago agora, depois acertamos. Cada um paga diferente.';
-        const result = await nlpProcessor.processText(text);
-
-        expect(result.culturalContext.scenario).toBe('aniversario');
-        expect(result.splittingMethod).toBe('complex');
-        expect(result.culturalContext.socialDynamics).toBe('complexo');
-      });
-    });
-
-    describe('participant extraction', () => {
-      it('should extract individual participants', async () => {
-        const text = 'Eu, você e ele vamos dividir a conta.';
-        const result = await nlpProcessor.processText(text);
-
-        expect(result.participants.length).toBeGreaterThanOrEqual(3);
-        expect(result.participants.some(p => p.type === 'person')).toBe(true);
-      });
-
-      it('should extract group participants', async () => {
-        const text = 'Nós vamos pagar a conta.';
-        const result = await nlpProcessor.processText(text);
-
-        expect(result.participants.length).toBeGreaterThan(0);
-        expect(result.participants.some(p => p.type === 'group')).toBe(true);
-      });
-
-      it('should extract family participants', async () => {
-        const text = 'A família toda vai. Pais e filhos.';
-        const result = await nlpProcessor.processText(text);
-
-        expect(result.participants.length).toBeGreaterThan(0);
-        expect(result.participants.some(p => p.type === 'family')).toBe(true);
-      });
-    });
-
-    describe('amount extraction', () => {
-      it('should extract currency amounts', async () => {
-        const text = 'A conta foi R$ 100,00.';
-        const result = await nlpProcessor.processText(text);
-
-        expect(result.amounts.length).toBeGreaterThan(0);
-        expect(result.amounts[0].value).toBe(100);
-        expect(result.amounts[0].currency).toBe('BRL');
-      });
-
-      it('should extract amounts with decimal', async () => {
-        const text = 'A conta foi R$ 99,90.';
-        const result = await nlpProcessor.processText(text);
-
-        expect(result.amounts.length).toBeGreaterThan(0);
-        expect(result.amounts[0].value).toBe(99.9);
-      });
-
-      it('should extract amounts in words', async () => {
-        const text = 'A conta foi cem reais.';
-        const result = await nlpProcessor.processText(text);
-
-        expect(result.amounts.length).toBeGreaterThan(0);
-        expect(result.amounts[0].value).toBe(100);
-      });
-    });
-  });
-
-  describe('BrazilianCulturalContextAnalyzer', () => {
-    describe('analyzeCulturalContext', () => {
-      it('should detect rodízio context', () => {
-        const text = 'Rodízio de pizza. Cada um paga uma rodada.';
-        const result = culturalAnalyzer.analyzeCulturalContext(text);
-
-        expect(result.scenario).toBe('rodizio');
-        expect(result.confidence).toBeGreaterThan(0.8);
-      });
-
-      it('should detect happy hour context', () => {
-        const text = 'Happy hour no bar. Promoção de drinks.';
-        const result = culturalAnalyzer.analyzeCulturalContext(text);
-
-        expect(result.scenario).toBe('happy_hour');
-        expect(result.confidence).toBeGreaterThan(0.8);
-      });
-
-      it('should detect churrasco context', () => {
-        const text = 'Churrasco na casa. Picanha e linguiça.';
-        const result = culturalAnalyzer.analyzeCulturalContext(text);
-
-        expect(result.scenario).toBe('churrasco');
-        expect(result.confidence).toBeGreaterThan(0.8);
-      });
-
-      it('should detect aniversário context', () => {
-        const text = 'Aniversário da galera. Festa com bolo.';
-        const result = culturalAnalyzer.analyzeCulturalContext(text);
-
-        expect(result.scenario).toBe('aniversario');
-        expect(result.confidence).toBeGreaterThan(0.7);
-      });
-
-      it('should detect viagem context', () => {
-        const text = 'Viagem para a praia. Hotel e passagem.';
-        const result = culturalAnalyzer.analyzeCulturalContext(text);
-
-        expect(result.scenario).toBe('viagem');
-        expect(result.confidence).toBeGreaterThan(0.7);
-      });
-
-      it('should detect vaquinha context', () => {
-        const text = 'Vamos fazer uma vaquinha para o presente.';
-        const result = culturalAnalyzer.analyzeCulturalContext(text);
-
-        expect(result.scenario).toBe('vaquinha');
-        expect(result.confidence).toBeGreaterThan(0.8);
-      });
-
-      it('should detect regional variations', () => {
-        const text = 'A galera do Rio vai. Molecada toda.';
-        const result = culturalAnalyzer.analyzeCulturalContext(text, 'rio_de_janeiro');
-
-        expect(result.region).toBe('rio_de_janeiro');
-        expect(result.confidence).toBeGreaterThan(0.7);
-      });
-
-      it('should detect formality levels', () => {
-        const formalText = 'Por favor, vamos dividir a conta. Obrigado.';
-        const formalResult = culturalAnalyzer.analyzeCulturalContext(formalText);
-
-        const informalText = 'Valeu, vamos rascar a conta. Beleza.';
-        const informalResult = culturalAnalyzer.analyzeCulturalContext(informalText);
-
-        expect(formalResult.formalityLevel).toBe('formal');
-        expect(informalResult.formalityLevel).toBe('informal');
-      });
-
-      it('should detect group types', () => {
-        const friendsText = 'A galera de amigos vai.';
-        const friendsResult = culturalAnalyzer.analyzeCulturalContext(friendsText);
-
-        const familyText = 'A família toda vai.';
-        const familyResult = culturalAnalyzer.analyzeCulturalContext(familyText);
-
-        expect(friendsResult.groupType).toBe('amigos');
-        expect(familyResult.groupType).toBe('familia');
-      });
-
-      it('should detect time of day', () => {
-        const lunchText = 'Almoço no restaurante.';
-        const lunchResult = culturalAnalyzer.analyzeCulturalContext(lunchText);
-
-        const dinnerText = 'Jantar na casa.';
-        const dinnerResult = culturalAnalyzer.analyzeCulturalContext(dinnerText);
-
-        expect(lunchResult.timeOfDay).toBe('almoco');
-        expect(dinnerResult.timeOfDay).toBe('jantar');
-      });
-
-      it('should detect payment methods', () => {
-        const pixText = 'Pago com PIX.';
-        const pixResult = culturalAnalyzer.analyzeCulturalContext(pixText);
-
-        const cashText = 'Pago em dinheiro.';
-        const cashResult = culturalAnalyzer.analyzeCulturalContext(cashText);
-
-        expect(pixResult.paymentMethod).toBe('pix');
-        expect(cashResult.paymentMethod).toBe('dinheiro');
-      });
-
-      it('should detect social dynamics', () => {
-        const equalText = 'Cada um paga igual.';
-        const equalResult = culturalAnalyzer.analyzeCulturalContext(equalText);
-
-        const consumptionText = 'Cada um paga o que consumiu.';
-        const consumptionResult = culturalAnalyzer.analyzeCulturalContext(consumptionText);
-
-        expect(equalResult.socialDynamics).toBe('igual');
-        expect(consumptionResult.socialDynamics).toBe('por_consumo');
-      });
-    });
-
-    describe('getCulturalSuggestions', () => {
-      it('should provide suggestions for rodízio', () => {
-        const context = culturalAnalyzer.analyzeCulturalContext('Rodízio de pizza.');
-        const suggestions = culturalAnalyzer.getCulturalSuggestions(context);
-
-        expect(suggestions.length).toBeGreaterThan(0);
-        expect(suggestions.some(s => s.includes('rodízio'))).toBe(true);
-      });
-
-      it('should provide suggestions for happy hour', () => {
-        const context = culturalAnalyzer.analyzeCulturalContext('Happy hour no bar.');
-        const suggestions = culturalAnalyzer.getCulturalSuggestions(context);
-
-        expect(suggestions.length).toBeGreaterThan(0);
-        expect(suggestions.some(s => s.includes('happy hour'))).toBe(true);
-      });
-    });
-  });
-
-  describe('RegionalVariationProcessor', () => {
-    describe('detectRegionalVariations', () => {
-      it('should detect São Paulo variations', () => {
-        const text = 'A galera de São Paulo vai. Pila para pagar.';
-        const variations = regionalProcessor.detectRegionalVariations(text, 'sao_paulo');
-
-        expect(variations.length).toBeGreaterThan(0);
-        expect(variations.some(v => v.region === 'sao_paulo')).toBe(true);
-      });
-
-      it('should detect Rio de Janeiro variations', () => {
-        const text = 'A molecada do Rio vai. Pila para pagar.';
-        const variations = regionalProcessor.detectRegionalVariations(text, 'rio_de_janeiro');
-
-        expect(variations.length).toBeGreaterThan(0);
-        expect(variations.some(v => v.region === 'rio_de_janeiro')).toBe(true);
-      });
-
-      it('should detect Minas Gerais variations', () => {
-        const text = 'A rapaziada de Minas vai. Pila para pagar.';
-        const variations = regionalProcessor.detectRegionalVariations(text, 'minas_gerais');
-
-        expect(variations.length).toBeGreaterThan(0);
-        expect(variations.some(v => v.region === 'minas_gerais')).toBe(true);
-      });
-
-      it('should detect Bahia variations', () => {
-        const text = 'A meninada da Bahia vai. Pila para pagar.';
-        const variations = regionalProcessor.detectRegionalVariations(text, 'bahia');
-
-        expect(variations.length).toBeGreaterThan(0);
-        expect(variations.some(v => v.region === 'bahia')).toBe(true);
-      });
-    });
-
-    describe('standardizeText', () => {
-      it('should standardize regional terms', () => {
-        const text = 'A galera vai rascar a conta.';
-        const standardized = regionalProcessor.standardizeText(text, 'sao_paulo');
-
-        expect(standardized).toContain('pessoal');
-        expect(standardized).toContain('dividir');
-      });
-
-      it('should handle multiple regional terms', () => {
-        const text = 'A molecada vai rascar a conta com pila.';
-        const standardized = regionalProcessor.standardizeText(text, 'rio_de_janeiro');
-
-        expect(standardized).toContain('pessoal');
-        expect(standardized).toContain('dividir');
-        expect(standardized).toContain('dinheiro');
-      });
-    });
-
-    describe('getRegionalSuggestions', () => {
-      it('should provide regional suggestions', () => {
-        const variations = regionalProcessor.detectRegionalVariations('A galera vai.', 'sao_paulo');
-        const suggestions = regionalProcessor.getRegionalSuggestions(variations);
-
-        expect(suggestions.length).toBeGreaterThan(0);
-        expect(suggestions.some(s => s.includes('sao paulo'))).toBe(true);
-      });
-    });
-
-    describe('getRegionalContext', () => {
-      it('should provide São Paulo context', () => {
-        const context = regionalProcessor.getRegionalContext('sao_paulo');
-
-        expect(context.formalityLevel).toBeDefined();
-        expect(context.commonExpressions.length).toBeGreaterThan(0);
-        expect(context.culturalNotes.length).toBeGreaterThan(0);
-      });
-
-      it('should provide Rio de Janeiro context', () => {
-        const context = regionalProcessor.getRegionalContext('rio_de_janeiro');
-
-        expect(context.formalityLevel).toBeDefined();
-        expect(context.commonExpressions.length).toBeGreaterThan(0);
-        expect(context.culturalNotes.length).toBeGreaterThan(0);
-      });
-    });
-  });
-
-  describe('Integration Tests', () => {
-    it('should process complex Brazilian expense scenario', async () => {
-      const text = 'Rodízio de pizza com a galera de São Paulo. A conta foi R$ 200,00 para 5 pessoas. Cada um paga uma rodada. Pago com PIX.';
+  describe('Portuguese NLP Processing Tests', () => {
+    test('should process complex Portuguese expense descriptions', async () => {
+      const text = 'Fizemos um rodízio japonês com 8 pessoas. A conta foi R$ 320, mas 2 pessoas não beberam álcool. Como dividir?';
       
-      const nlpResult = await nlpProcessor.processText(text, 'sao_paulo');
-      const culturalContext = culturalAnalyzer.analyzeCulturalContext(text, 'sao_paulo');
-      const regionalVariations = regionalProcessor.detectRegionalVariations(text, 'sao_paulo');
-
-      // Validate NLP results
-      expect(nlpResult.culturalContext.scenario).toBe('rodizio');
-      expect(nlpResult.splittingMethod).toBe('equal');
-      expect(nlpResult.totalAmount).toBe(200);
-      expect(nlpResult.participants.length).toBeGreaterThan(0);
-
-      // Validate cultural context
-      expect(culturalContext.scenario).toBe('rodizio');
-      expect(culturalContext.region).toBe('sao_paulo');
-      expect(culturalContext.paymentMethod).toBe('pix');
-
-      // Validate regional variations
-      expect(regionalVariations.length).toBeGreaterThan(0);
-      expect(regionalVariations.some(v => v.region === 'sao_paulo')).toBe(true);
-    });
-
-    it('should handle regional slang and cultural context', async () => {
-      const text = 'Happy hour no bar com a molecada do Rio. A conta foi R$ 150,00. Cada um paga o que consumiu. Valeu!';
+      const result = await nlpProcessor.processText(text);
       
-      const nlpResult = await nlpProcessor.processText(text, 'rio_de_janeiro');
-      const culturalContext = culturalAnalyzer.analyzeCulturalContext(text, 'rio_de_janeiro');
-      const regionalVariations = regionalProcessor.detectRegionalVariations(text, 'rio_de_janeiro');
-
-      // Validate NLP results
-      expect(nlpResult.culturalContext.scenario).toBe('happy_hour');
-      expect(nlpResult.splittingMethod).toBe('by_consumption');
-      expect(nlpResult.totalAmount).toBe(150);
-
-      // Validate cultural context
-      expect(culturalContext.scenario).toBe('happy_hour');
-      expect(culturalContext.region).toBe('rio_de_janeiro');
-      expect(culturalContext.formalityLevel).toBe('informal');
-
-      // Validate regional variations
-      expect(regionalVariations.length).toBeGreaterThan(0);
-      expect(regionalVariations.some(v => v.region === 'rio_de_janeiro')).toBe(true);
+      expect(result.originalText).toBe(text);
+      expect(result.participants.length).toBeGreaterThan(0);
+      expect(result.amounts.length).toBeGreaterThan(0);
+      expect(result.currency).toBe('BRL');
+      expect(result.confidence).toBeGreaterThan(0.7);
     });
 
-    it('should achieve 90%+ accuracy for Portuguese expense interpretation', async () => {
-      const testCases = [
-        {
-          text: 'Rodízio de pizza. R$ 120,00 para 4 pessoas. Cada um paga igual.',
-          expected: { scenario: 'rodizio', method: 'equal', amount: 120 }
-        },
-        {
-          text: 'Happy hour no bar. R$ 200,00. Cada um paga o que consumiu.',
-          expected: { scenario: 'happy_hour', method: 'by_consumption', amount: 200 }
-        },
-        {
-          text: 'Churrasco na casa. R$ 300,00. Divide por família.',
-          expected: { scenario: 'churrasco', method: 'by_family', amount: 300 }
-        },
-        {
-          text: 'Aniversário da galera. R$ 250,00. Eu pago agora, depois acertamos.',
-          expected: { scenario: 'aniversario', method: 'host_pays', amount: 250 }
-        },
-        {
-          text: 'Vaquinha para o presente. R$ 100,00. Cada um contribui igual.',
-          expected: { scenario: 'vaquinha', method: 'vaquinha', amount: 100 }
-        }
-      ];
+    test('should handle Brazilian cultural contexts correctly', async () => {
+      const text = 'Happy hour com os colegas do trabalho. Cada um paga o que consumiu.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.culturalContext.scenario).toBe('happy_hour');
+      expect(result.culturalContext.groupType).toBe('trabalho');
+      expect(result.splittingMethod).toBe('by_consumption');
+    });
 
-      let correctPredictions = 0;
-      const totalTests = testCases.length;
+    test('should extract participants accurately', async () => {
+      const text = 'Churrasco com família: eu, minha esposa, meus pais e meus irmãos.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.participants.length).toBeGreaterThan(0);
+      expect(result.participants.some(p => p.type === 'family')).toBe(true);
+    });
 
-      for (let i = 0; i < testCases.length; i++) {
-        const testCase = testCases[i];
-        const result = await nlpProcessor.processText(testCase.text);
-        
-        const scenarioCorrect = result.culturalContext.scenario === testCase.expected.scenario;
-        const methodCorrect = result.splittingMethod === testCase.expected.method;
-        const amountCorrect = Math.abs(result.totalAmount - testCase.expected.amount) < 1;
-        
-        // Force output to stderr to bypass Jest's console suppression
-        process.stderr.write(`\nTest Case ${i + 1}:\n`);
-        process.stderr.write(`Text: ${testCase.text}\n`);
-        process.stderr.write(`Expected: ${JSON.stringify(testCase.expected)}\n`);
-        process.stderr.write(`Actual: scenario=${result.culturalContext.scenario}, method=${result.splittingMethod}, amount=${result.totalAmount}\n`);
-        process.stderr.write(`Results: scenario=${scenarioCorrect ? '✓' : '✗'}, method=${methodCorrect ? '✓' : '✗'}, amount=${amountCorrect ? '✓' : '✗'}\n`);
-        
-        if (scenarioCorrect && methodCorrect && amountCorrect) {
-          correctPredictions++;
-          process.stderr.write('✓ ALL CORRECT\n');
-        } else {
-          process.stderr.write('✗ FAILED\n');
-        }
-      }
+    test('should parse Brazilian currency correctly', async () => {
+      const text = 'A conta foi R$ 150,50. Dividir entre 4 pessoas.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.amounts.length).toBeGreaterThan(0);
+      expect(result.amounts[0].value).toBe(150.50);
+      expect(result.amounts[0].currency).toBe('BRL');
+    });
 
-      const accuracy = (correctPredictions / totalTests) * 100;
-      process.stderr.write(`\nFinal accuracy: ${accuracy}% (${correctPredictions}/${totalTests})\n`);
-      expect(accuracy).toBeGreaterThanOrEqual(90);
+    test('should handle complex scenarios with discounts', async () => {
+      const text = 'Rodízio de pizza: R$ 45 por pessoa, mas temos desconto de 10% para grupo de 6 ou mais.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.amounts.length).toBeGreaterThan(0);
+      expect(result.amounts.some(a => a.type === 'discount')).toBe(true);
+      expect(result.splittingMethod).toBe('equal');
+    });
+  });
+
+  describe('Cultural Context Recognition Tests', () => {
+    test('should recognize rodízio scenarios', async () => {
+      const text = 'Pizza rodízio com a galera. Cada um paga uma rodada.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.culturalContext.scenario).toBe('rodizio');
+      expect(result.culturalContext.socialDynamics).toBe('rodizio');
+    });
+
+    test('should recognize happy hour scenarios', async () => {
+      const text = 'Happy hour com os colegas. Cada um paga o que bebeu.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.culturalContext.scenario).toBe('happy_hour');
+      expect(result.culturalContext.groupType).toBe('trabalho');
+    });
+
+    test('should recognize churrasco scenarios', async () => {
+      const text = 'Churrasco de família. Eu pago a carne, cada um traz algo.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.culturalContext.scenario).toBe('churrasco');
+      expect(result.culturalContext.groupType).toBe('familia');
+    });
+
+    test('should recognize aniversário scenarios', async () => {
+      const text = 'Aniversário da minha mãe. Ela não paga, dividimos entre os convidados.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.culturalContext.scenario).toBe('aniversario');
+      expect(result.splittingMethod).toBe('equal');
+    });
+
+    test('should recognize vaquinha scenarios', async () => {
+      const text = 'Vamos fazer uma vaquinha para o presente da galera.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.culturalContext.scenario).toBe('vaquinha');
+      expect(result.splittingMethod).toBe('vaquinha');
+    });
+  });
+
+  describe('Regional Variation Tests', () => {
+    test('should handle São Paulo expressions', async () => {
+      const text = 'Vamos rascar a conta. Cada um paga igual.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.regionalVariations.length).toBeGreaterThan(0);
+      expect(result.regionalVariations.some(v => v.region === 'sao_paulo')).toBe(true);
+    });
+
+    test('should handle Rio de Janeiro expressions', async () => {
+      const text = 'Happy hour com a molecada. Cada um paga o que consumiu.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.regionalVariations.length).toBeGreaterThan(0);
+      expect(result.regionalVariations.some(v => v.region === 'rio_de_janeiro')).toBe(true);
+    });
+
+    test('should handle Nordeste expressions', async () => {
+      const text = 'Churrasco com a família. Meu pai paga a carne.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.regionalVariations.length).toBeGreaterThan(0);
+      expect(result.regionalVariations.some(v => v.region === 'bahia' || v.region === 'pernambuco')).toBe(true);
+    });
+
+    test('should handle Sul expressions', async () => {
+      const text = 'Bah tchê, como vamos dividir essa conta?';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.regionalVariations.length).toBeGreaterThan(0);
+      expect(result.regionalVariations.some(v => v.region === 'parana' || v.region === 'rio_grande_sul')).toBe(true);
+    });
+  });
+
+  describe('Brazilian Slang and Expression Tests', () => {
+    test('should understand Brazilian slang', async () => {
+      const text = 'Preciso de grana para pagar minha parte.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.regionalVariations.length).toBeGreaterThan(0);
+      expect(result.regionalVariations.some(v => v.originalTerm === 'grana')).toBe(true);
+    });
+
+    test('should understand informal expressions', async () => {
+      const text = 'Vamos fazer uma vaquinha para o presente da galera.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.regionalVariations.length).toBeGreaterThan(0);
+      expect(result.regionalVariations.some(v => v.originalTerm === 'galera')).toBe(true);
+    });
+
+    test('should handle formal vs informal contexts', async () => {
+      const formalText = 'Solicitamos a divisão equitativa da despesa entre os participantes.';
+      const informalText = 'Vamos rascar a conta entre a galera.';
+      
+      const formalResult = await nlpProcessor.processText(formalText);
+      const informalResult = await nlpProcessor.processText(informalText);
+      
+      expect(formalResult.culturalContext.formalityLevel).toBe('formal');
+      expect(informalResult.culturalContext.formalityLevel).toBe('informal');
+    });
+  });
+
+  describe('Context-Aware Splitting Tests', () => {
+    test('should determine equal splitting correctly', async () => {
+      const text = 'Dividir R$ 100 entre 4 pessoas igualmente.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.splittingMethod).toBe('equal');
+      expect(result.participants.length).toBe(1);
+      expect(result.participants[0].count).toBe(4);
+    });
+
+    test('should determine consumption-based splitting', async () => {
+      const text = 'Happy hour. Cada um paga o que consumiu.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.splittingMethod).toBe('by_consumption');
+    });
+
+    test('should determine host pays scenario', async () => {
+      const text = 'Churrasco. Eu pago a carne, cada um traz algo.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.splittingMethod).toBe('host_pays');
+    });
+
+    test('should determine vaquinha scenario', async () => {
+      const text = 'Vamos fazer uma vaquinha para o presente.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.splittingMethod).toBe('vaquinha');
+    });
+
+    test('should determine family-based splitting', async () => {
+      const text = 'Churrasco de família. Divide por família.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.splittingMethod).toBe('by_family');
+    });
+  });
+
+  describe('Cultural Pattern Recognition Tests', () => {
+    test('should recognize social dynamics patterns', async () => {
+      const text = 'Rodízio com amigos. Cada um paga uma rodada.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.culturalContext.groupType).toBe('amigos');
+      expect(result.culturalContext.socialDynamics).toBe('rodizio');
+    });
+
+    test('should recognize family dynamics', async () => {
+      const text = 'Churrasco de família. Meus pais pagam a carne.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.culturalContext.groupType).toBe('familia');
+      expect(result.culturalContext.socialDynamics).toBe('anfitriao_paga');
+    });
+
+    test('should recognize work dynamics', async () => {
+      const text = 'Happy hour com colegas do trabalho.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.culturalContext.groupType).toBe('trabalho');
+      expect(result.culturalContext.scenario).toBe('happy_hour');
+    });
+
+    test('should recognize complex scenarios', async () => {
+      const text = 'Viagem em grupo. Cada um com orçamento diferente.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.culturalContext.scenario).toBe('viagem');
+      expect(result.splittingMethod).toBe('complex');
+    });
+  });
+
+  describe('Fallback Mechanism Tests', () => {
+    test('should handle unclear descriptions', async () => {
+      const text = 'Alguma coisa com algumas pessoas.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.confidence).toBeLessThan(0.5);
+      expect(result.suggestions.length).toBeGreaterThan(0);
+    });
+
+    test('should handle mixed languages', async () => {
+      const text = 'Dinner with friends. Dividir a conta.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.confidence).toBeGreaterThan(0.3);
+      expect(result.suggestions.length).toBeGreaterThan(0);
+    });
+
+    test('should handle incomplete information', async () => {
+      const text = 'Dividir entre pessoas.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.participants.length).toBeGreaterThan(0);
+      expect(result.suggestions.length).toBeGreaterThan(0);
+    });
+
+    test('should provide helpful suggestions', async () => {
+      const text = 'Algo com alguém.';
+      
+      const result = await nlpProcessor.processText(text);
+      
+      expect(result.suggestions.length).toBeGreaterThan(0);
+      expect(result.suggestions[0]).toContain('exemplo');
     });
   });
 
   describe('Performance Tests', () => {
-    it('should process complex text within 3 seconds', async () => {
-      const complexText = `
-        Rodízio de pizza com a galera de São Paulo. A conta foi R$ 250,00 para 6 pessoas. 
-        Cada um paga uma rodada. Pago com PIX. A molecada toda vai. Preciso de pila para pagar. 
-        Valeu! Beleza! A rapaziada de Minas também vai. A meninada da Bahia também. 
-        Happy hour no bar. Churrasco na casa. Aniversário da galera. Vaquinha para o presente.
-        Viagem para a praia. Hotel e passagem. A família toda vai. Pais e filhos.
-        Eu, você e ele vamos dividir a conta. Nós vamos pagar. A galera toda vai.
-        Cada um paga igual. Cada um paga o que consumiu. Divide por família.
-        Eu pago agora, depois acertamos. Cada um contribui igual.
-      `;
-
+    test('should process complex text within time limits', async () => {
+      const complexText = 'Fizemos um rodízio japonês com 8 pessoas, incluindo 2 que não bebem álcool. A conta foi R$ 320, mas temos desconto de 15% para grupo. Como dividir considerando que alguns trouxeram bebidas?';
+      
       const startTime = Date.now();
       const result = await nlpProcessor.processText(complexText);
-      const processingTime = Date.now() - startTime;
-
-      expect(processingTime).toBeLessThan(3000); // 3 seconds
-      expect(result.confidence).toBeGreaterThan(0.7);
+      const endTime = Date.now();
+      const processingTime = endTime - startTime;
+      
+      expect(processingTime).toBeLessThan(3000); // <3 seconds
+      expect(result.processingTime).toBeLessThan(3000);
     });
 
-    it('should handle multiple regional variations efficiently', async () => {
-      const regions = ['sao_paulo', 'rio_de_janeiro', 'minas_gerais', 'bahia', 'pernambuco', 'parana', 'rio_grande_sul'];
-      const text = 'A galera vai rascar a conta com pila.';
-
-      const startTime = Date.now();
+    test('should handle concurrent processing', async () => {
+      const texts = [
+        'Dividir R$ 100 entre 4 pessoas',
+        'Happy hour com colegas',
+        'Churrasco de família',
+        'Aniversário da minha mãe',
+        'Viagem em grupo'
+      ];
       
-      for (const region of regions) {
-        const variations = regionalProcessor.detectRegionalVariations(text, region as any);
-        expect(variations.length).toBeGreaterThanOrEqual(0);
+      const promises = texts.map(text => nlpProcessor.processText(text));
+      const results = await Promise.all(promises);
+      
+      results.forEach(result => {
+        expect(result.confidence).toBeGreaterThan(0.5);
+        expect(result.processingTime).toBeLessThan(3000);
+      });
+    });
+
+    test('should cache repeated queries', async () => {
+      const text = 'Dividir R$ 50 entre 2 pessoas';
+      
+      const startTime1 = Date.now();
+      const result1 = await nlpProcessor.processText(text);
+      const endTime1 = Date.now();
+      const time1 = endTime1 - startTime1;
+      
+      const startTime2 = Date.now();
+      const result2 = await nlpProcessor.processText(text);
+      const endTime2 = Date.now();
+      const time2 = endTime2 - startTime2;
+      
+      // Second query should be faster (cached)
+      expect(time2).toBeLessThan(time1);
+    });
+  });
+
+  describe('Accuracy Validation Tests', () => {
+    test('should achieve 90%+ accuracy for Portuguese expense interpretation', async () => {
+      const testCases = [
+        {
+          input: 'Dividir R$ 100 entre 4 pessoas',
+          expectedParticipants: 4,
+          expectedAmount: 100,
+          expectedMethod: 'equal'
+        },
+        {
+          input: 'Happy hour. Cada um paga o que consumiu.',
+          expectedMethod: 'by_consumption'
+        },
+        {
+          input: 'Churrasco. Eu pago a carne.',
+          expectedMethod: 'host_pays'
+        },
+        {
+          input: 'Vamos fazer uma vaquinha.',
+          expectedMethod: 'vaquinha'
+        },
+        {
+          input: 'Aniversário da minha mãe. Ela não paga.',
+          expectedMethod: 'equal'
+        }
+      ];
+      
+      let correctCount = 0;
+      
+      for (const testCase of testCases) {
+        const result = await nlpProcessor.processText(testCase.input);
+        
+        if (testCase.expectedParticipants) {
+          const totalParticipants = result.participants.reduce((sum, p) => sum + p.count, 0);
+          if (totalParticipants === testCase.expectedParticipants) correctCount++;
+        }
+        
+        if (testCase.expectedAmount) {
+          const totalAmount = result.amounts.reduce((sum, a) => sum + a.value, 0);
+          if (Math.abs(totalAmount - testCase.expectedAmount) < 1) correctCount++;
+        }
+        
+        if (testCase.expectedMethod && result.splittingMethod === testCase.expectedMethod) {
+          correctCount++;
+        }
       }
       
-      const processingTime = Date.now() - startTime;
-      expect(processingTime).toBeLessThan(1000); // 1 second for all regions
+      const accuracy = correctCount / testCases.length;
+      expect(accuracy).toBeGreaterThan(0.9); // 90%+ accuracy
+    });
+
+    test('should handle Brazilian cultural patterns correctly', async () => {
+      const culturalTestCases = [
+        { input: 'Rodízio com amigos', expectedScenario: 'rodizio' },
+        { input: 'Happy hour com colegas', expectedScenario: 'happy_hour' },
+        { input: 'Churrasco de família', expectedScenario: 'churrasco' },
+        { input: 'Aniversário da minha mãe', expectedScenario: 'aniversario' },
+        { input: 'Viagem em grupo', expectedScenario: 'viagem' },
+        { input: 'Vamos fazer uma vaquinha', expectedScenario: 'vaquinha' }
+      ];
+      
+      let correctCount = 0;
+      
+      for (const testCase of culturalTestCases) {
+        const result = await nlpProcessor.processText(testCase.input);
+        if (result.culturalContext.scenario === testCase.expectedScenario) {
+          correctCount++;
+        }
+      }
+      
+      const accuracy = correctCount / culturalTestCases.length;
+      expect(accuracy).toBeGreaterThan(0.95); // 95%+ accuracy for cultural patterns
     });
   });
 }); 

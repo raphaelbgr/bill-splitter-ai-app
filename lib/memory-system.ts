@@ -218,11 +218,19 @@ export class MemorySystem {
 
     const existingPreferences = await this.getUserPreferences(userId);
     const updatedPreferences: UserPreferences = {
-      ...existingPreferences,
-      ...preferences,
+      preferredSplittingMethod: preferences.preferredSplittingMethod ?? existingPreferences?.preferredSplittingMethod ?? '',
+      culturalContext: preferences.culturalContext ?? existingPreferences?.culturalContext ?? '',
+      regionalVariations: preferences.regionalVariations ?? existingPreferences?.regionalVariations ?? [],
+      paymentMethods: preferences.paymentMethods ?? existingPreferences?.paymentMethods ?? [],
+      groupInteractionPatterns: preferences.groupInteractionPatterns ?? existingPreferences?.groupInteractionPatterns ?? [],
+      languagePreference: preferences.languagePreference ?? existingPreferences?.languagePreference ?? 'pt-BR',
       privacySettings: {
-        ...existingPreferences?.privacySettings,
-        ...preferences.privacySettings
+        allowMemoryRetention: preferences.privacySettings?.allowMemoryRetention ?? existingPreferences?.privacySettings?.allowMemoryRetention ?? false,
+        allowPreferenceLearning: preferences.privacySettings?.allowPreferenceLearning ?? existingPreferences?.privacySettings?.allowPreferenceLearning ?? false,
+        allowAnalytics: preferences.privacySettings?.allowAnalytics ?? existingPreferences?.privacySettings?.allowAnalytics ?? false,
+        dataRetentionPeriod: preferences.privacySettings?.dataRetentionPeriod ?? existingPreferences?.privacySettings?.dataRetentionPeriod ?? 90,
+        allowDataExport: preferences.privacySettings?.allowDataExport ?? existingPreferences?.privacySettings?.allowDataExport ?? false,
+        allowDataDeletion: preferences.privacySettings?.allowDataDeletion ?? existingPreferences?.privacySettings?.allowDataDeletion ?? false
       }
     };
 
@@ -362,7 +370,7 @@ export class MemorySystem {
       throw new Error('No consent for data export');
     }
 
-    const exportData = {
+    const exportData: { userId: string; exportDate: Date; conversations: ConversationMemory[]; preferences: UserPreferences | null; culturalContext: BrazilianContext | null; consent: LGPDConsent } = {
       userId,
       exportDate: new Date(),
       conversations: [],
@@ -455,8 +463,8 @@ export class MemorySystem {
       totalConversations: keys.length,
       totalMessages: 0,
       averageMessagesPerConversation: 0,
-      mostUsedSplittingMethods: {},
-      culturalContexts: {},
+      mostUsedSplittingMethods: {} as Record<string, number>,
+      culturalContexts: {} as Record<string, number>,
       retentionPeriod: this.retentionPolicy.conversationData
     };
 

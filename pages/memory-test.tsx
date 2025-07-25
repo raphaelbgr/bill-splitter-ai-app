@@ -53,7 +53,7 @@ const MemoryTestPage: React.FC = () => {
                 {Object.entries(testResults).map(([test, result]) => (
                   <div key={test} className="flex justify-between">
                     <span className="text-gray-700">{test}:</span>
-                    <span className="text-green-600 font-medium">{result}</span>
+                    <span className="text-green-600 font-medium">{String(result)}</span>
                   </div>
                 ))}
               </div>

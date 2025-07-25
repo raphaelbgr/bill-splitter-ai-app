@@ -1,6 +1,6 @@
 import { MemorySystem, UserPreferences, BrazilianContext } from './memory-system';
 import { UserPreferenceLearner, PreferenceSuggestion } from './user-preferences';
-import { BrazilianCulturalContextAnalyzer } from './cultural-context';
+import { BrazilianCulturalContextAnalyzer, BrazilianCulturalContext } from './cultural-context';
 
 // Context-Aware Types
 export interface ContextAwareSuggestion {
@@ -85,7 +85,7 @@ export class ContextAwareProcessor {
       conversationId,
       suggestions,
       appliedPreferences,
-      culturalContext: culturalContext || currentCulturalContext,
+      culturalContext: culturalContext || this.convertCulturalContext(currentCulturalContext),
       confidence: this.calculateOverallConfidence(suggestions, appliedPreferences),
       processingTime
     };
@@ -112,7 +112,7 @@ export class ContextAwareProcessor {
       const culturalRelevance = this.calculateCulturalRelevance(suggestion, currentCulturalContext);
       
       suggestions.push({
-        type: suggestion.type,
+        type: this.mapSuggestionType(suggestion.type),
         value: suggestion.value,
         confidence: suggestion.confidence,
         reason: suggestion.reason,
@@ -351,8 +351,8 @@ export class ContextAwareProcessor {
       conversationId,
       messages,
       groupId,
-      userPreferences,
-      culturalContext
+      userPreferences || undefined,
+      this.convertCulturalContext(culturalContext) || undefined
     );
 
     // Learn from this interaction
@@ -472,6 +472,45 @@ export class ContextAwareProcessor {
         culturalRelevance: 0.9,
         preferenceAccuracy: 0.88
       }
+    };
+  }
+
+  /**
+   * Map suggestion type to ContextAwareSuggestion type
+   */
+  private mapSuggestionType(type: string): 'splitting_method' | 'payment_method' | 'cultural_context' | 'group_pattern' {
+    switch (type) {
+      case 'regional_variation':
+        return 'cultural_context';
+      case 'splitting_method':
+      case 'payment_method':
+      case 'cultural_context':
+      case 'group_pattern':
+        return type as any;
+      default:
+        return 'cultural_context';
+    }
+  }
+
+  /**
+   * Convert BrazilianCulturalContext to BrazilianContext
+   */
+  private convertCulturalContext(context: BrazilianCulturalContext | BrazilianContext | null): BrazilianContext | null {
+    if (!context) return null;
+    
+    // If it's already a BrazilianContext, return it
+    if ('culturalPatterns' in context && 'paymentPreferences' in context) {
+      return context as BrazilianContext;
+    }
+    
+    // Convert BrazilianCulturalContext to BrazilianContext
+    const culturalContext = context as any;
+    return {
+      region: culturalContext.region || 'sao_paulo',
+      culturalPatterns: [culturalContext.scenario || 'outros'],
+      socialDynamics: [culturalContext.socialDynamics || 'igual'],
+      paymentPreferences: [culturalContext.paymentMethod || 'pix'],
+      formalityLevel: culturalContext.formalityLevel || 'informal'
     };
   }
 } 

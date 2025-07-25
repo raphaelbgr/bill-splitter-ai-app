@@ -186,10 +186,45 @@ export class RedisCache {
       console.error('Redis close error:', error);
     }
   }
+
+  // Proxy setex for compatibility
+  async setex(key: string, seconds: number, value: string): Promise<void> {
+    await this.redis.setex(key, seconds, value);
+  }
+
+  // Proxy get for compatibility
+  async get(key: string): Promise<string | null> {
+    return this.redis.get(key);
+  }
+
+  // Proxy del for compatibility
+  async del(...keys: string[]): Promise<number> {
+    // @ts-ignore
+    return this.redis.del(...keys);
+  }
+
+  // Proxy keys for compatibility
+  async keys(pattern: string): Promise<string[]> {
+    // @ts-ignore
+    return this.redis.keys(pattern);
+  }
+
+  // Proxy ttl for compatibility
+  async ttl(key: string): Promise<number> {
+    // @ts-ignore
+    return this.redis.ttl(key);
+  }
+
+  // Proxy expire for compatibility
+  async expire(key: string, seconds: number): Promise<number> {
+    // @ts-ignore
+    return this.redis.expire(key, seconds);
+  }
 }
 
 // Export singleton instance
 export const redisCache = new RedisCache();
 
 // Export for direct Redis access if needed
-export { redis }; 
+export { redis };
+export { RedisCache as RedisClient }; 

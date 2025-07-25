@@ -1,7 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { MemorySystem } from '../lib/memory-system';
-import { UserPreferenceLearner } from '../lib/user-preferences';
-import { ContextAwareProcessor } from '../lib/context-aware';
+import React, { useState, useEffect, useCallback } from 'react';
 
 interface MemoryContextUIProps {
   userId: string;
@@ -29,10 +26,6 @@ export const MemoryContextUI: React.FC<MemoryContextUIProps> = ({
   onConsentChange,
   onPreferencesUpdate
 }) => {
-  const [memorySystem] = useState(() => new MemorySystem());
-  const [preferenceLearner] = useState(() => new UserPreferenceLearner());
-  const [contextProcessor] = useState(() => new ContextAwareProcessor());
-
   const [consentSettings, setConsentSettings] = useState<ConsentSettings>({
     memoryRetention: false,
     preferenceLearning: false,
@@ -54,36 +47,51 @@ export const MemoryContextUI: React.FC<MemoryContextUIProps> = ({
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'preferences' | 'privacy' | 'analytics' | 'export'>('preferences');
 
-  useEffect(() => {
-    loadUserData();
-  }, [userId]);
-
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     setLoading(true);
     try {
       // Load user preferences
-      const preferences = await memorySystem.getUserPreferences(userId);
-      setUserPreferences(preferences);
-
-      // Load preference summary
-      const summary = await preferenceLearner.getUserPreferenceSummary(userId);
-      setPreferenceSummary(summary);
-
-      // Load analytics (if consent given)
-      if (consentSettings.analytics) {
-        const analyticsData = await contextProcessor.getContextAwareAnalytics(userId);
-        setAnalytics(analyticsData);
+      const preferencesResponse = await fetch(`/api/memory/user-preferences?userId=${userId}`);
+      if (preferencesResponse.ok) {
+        const preferences = await preferencesResponse.json();
+        setUserPreferences(preferences);
       }
 
       // Load consent settings
-      const memoryConsent = await memorySystem.getUserConsent(userId, 'memory_retention');
-      const preferenceConsent = await memorySystem.getUserConsent(userId, 'preference_learning');
-      const analyticsConsent = await memorySystem.getUserConsent(userId, 'analytics');
+      const memoryConsentResponse = await fetch(`/api/memory/consent?userId=${userId}&consentType=memory_retention`);
+      const preferenceConsentResponse = await fetch(`/api/memory/consent?userId=${userId}&consentType=preference_learning`);
+      const analyticsConsentResponse = await fetch(`/api/memory/consent?userId=${userId}&consentType=analytics`);
 
-      setConsentSettings({
-        memoryRetention: memoryConsent.consentGiven,
-        preferenceLearning: preferenceConsent.consentGiven,
-        analytics: analyticsConsent.consentGiven
+      if (memoryConsentResponse.ok && preferenceConsentResponse.ok && analyticsConsentResponse.ok) {
+        const memoryConsent = await memoryConsentResponse.json();
+        const preferenceConsent = await preferenceConsentResponse.json();
+        const analyticsConsent = await analyticsConsentResponse.json();
+
+        setConsentSettings({
+          memoryRetention: memoryConsent.consentGiven,
+          preferenceLearning: preferenceConsent.consentGiven,
+          analytics: analyticsConsent.consentGiven
+        });
+
+        // Load analytics if consent given
+        if (analyticsConsent.consentGiven) {
+          const analyticsResponse = await fetch(`/api/memory/analytics?userId=${userId}`);
+          if (analyticsResponse.ok) {
+            const analyticsData = await analyticsResponse.json();
+            setAnalytics(analyticsData);
+          }
+        }
+      }
+
+      // Mock preference summary for now (would need separate API)
+      setPreferenceSummary({
+        mostUsedMethods: {
+          splittingMethod: 'equal',
+          paymentMethod: 'PIX',
+          culturalContext: 'brazilian',
+          region: 'São Paulo'
+        },
+        totalInteractions: 15
       });
 
     } catch (error) {
@@ -91,7 +99,11 @@ export const MemoryContextUI: React.FC<MemoryContextUIProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
 
   const handleConsentChange = async (consentType: string, consentGiven: boolean) => {
     try {
@@ -105,9 +117,16 @@ export const MemoryContextUI: React.FC<MemoryContextUIProps> = ({
         dataCategories: consentGiven ? ['conversations', 'preferences', 'cultural_context'] : []
       };
 
-      await memorySystem.createConsent(consent);
-      setConsentSettings(prev => ({ ...prev, [consentType]: consentGiven }));
-      onConsentChange?.(consentType, consentGiven);
+      const response = await fetch('/api/memory/consent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(consent)
+      });
+
+      if (response.ok) {
+        setConsentSettings(prev => ({ ...prev, [consentType]: consentGiven }));
+        onConsentChange?.(consentType, consentGiven);
+      }
     } catch (error) {
       console.error('Error updating consent:', error);
     }
@@ -122,22 +141,33 @@ export const MemoryContextUI: React.FC<MemoryContextUIProps> = ({
         ...userPreferences,
         privacySettings: updatedSettings
       };
-      await memorySystem.updateUserPreferences(userId, updatedPreferences);
-      setUserPreferences(updatedPreferences);
-      onPreferencesUpdate?.(updatedPreferences);
+      
+      const response = await fetch(`/api/memory/user-preferences?userId=${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedPreferences)
+      });
+
+      if (response.ok) {
+        setUserPreferences(updatedPreferences);
+        onPreferencesUpdate?.(updatedPreferences);
+      }
     }
   };
 
   const handleExportData = async () => {
     try {
-      const exportData = await memorySystem.exportUserData(userId);
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `rachaai-data-${userId}-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const response = await fetch(`/api/memory/export?userId=${userId}`);
+      if (response.ok) {
+        const exportData = await response.json();
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rachaai-data-${userId}-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
     } catch (error) {
       console.error('Error exporting data:', error);
     }
@@ -146,11 +176,16 @@ export const MemoryContextUI: React.FC<MemoryContextUIProps> = ({
   const handleDeleteData = async () => {
     if (window.confirm('Tem certeza que deseja deletar todos os seus dados? Esta ação não pode ser desfeita.')) {
       try {
-        await memorySystem.deleteAllUserData(userId);
-        setUserPreferences(null);
-        setPreferenceSummary(null);
-        setAnalytics(null);
-        alert('Todos os dados foram deletados com sucesso.');
+        const response = await fetch(`/api/memory/delete?userId=${userId}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          setUserPreferences(null);
+          setPreferenceSummary(null);
+          setAnalytics(null);
+          alert('Todos os dados foram deletados com sucesso.');
+        }
       } catch (error) {
         console.error('Error deleting data:', error);
       }

@@ -410,8 +410,32 @@ export class BrazilianNLPProcessor {
             value,
             currency: 'BRL',
             description: this.extractAmountDescription(text, match[0]),
-            type: this.determineAmountType(match[0], context),
+            type: this.determineAmountType(match[0], text, context),
             confidence: this.calculateAmountConfidence(match[0], context)
+          });
+        }
+      }
+    }
+
+    // Extract discount percentages specifically
+    const discountPatterns = [
+      /desconto\s*(?:de\s*)?(\d+)\s*%/gi,
+      /(\d+)\s*%\s*(?:de\s*)?desconto/gi,
+      /promoção\s*(?:de\s*)?(\d+)\s*%/gi,
+      /(\d+)\s*%\s*(?:de\s*)?promoção/gi,
+    ];
+
+    for (const pattern of discountPatterns) {
+      const matches = text.matchAll(pattern);
+      for (const match of matches) {
+        const value = this.parseAmount(match[1]);
+        if (value > 0 && value <= 100) { // Valid percentage range
+          amounts.push({
+            value: -value, // Negative value to indicate discount
+            currency: 'BRL',
+            description: `Desconto de ${value}%`,
+            type: 'discount',
+            confidence: 0.9
           });
         }
       }
@@ -479,7 +503,7 @@ export class BrazilianNLPProcessor {
             value,
             currency: 'BRL',
             description: this.extractAmountDescription(text, match[0]),
-            type: 'total',
+            type: this.determineAmountType(match[0], text, context),
             confidence: 0.8
           });
         }
@@ -652,18 +676,20 @@ export class BrazilianNLPProcessor {
   /**
    * Detect regional variations in text
    */
-  private detectRegionalVariations(text: string, region: string): RegionalVariation[] {
+  private detectRegionalVariations(text: string, region?: string): RegionalVariation[] {
     const variations: RegionalVariation[] = [];
-    const regionalExpressions = this.regionalExpressions[region] || this.regionalExpressions.outros;
-
-    for (const [regionalTerm, standardTerm] of Object.entries(regionalExpressions)) {
-      if (text.includes(regionalTerm)) {
-        variations.push({
-          region,
-          originalTerm: regionalTerm,
-          standardTerm,
-          confidence: 0.8
-        });
+    
+    // Check all regions for variations, not just the specific region
+    for (const [regionKey, regionalExpressions] of Object.entries(this.regionalExpressions)) {
+      for (const [regionalTerm, standardTerm] of Object.entries(regionalExpressions)) {
+        if (text.toLowerCase().includes(regionalTerm.toLowerCase())) {
+          variations.push({
+            region: regionKey,
+            originalTerm: regionalTerm,
+            standardTerm,
+            confidence: 0.8
+          });
+        }
       }
     }
 
@@ -889,27 +915,35 @@ export class BrazilianNLPProcessor {
   /**
    * Determine amount type
    */
-  private determineAmountType(amountMatch: string, context: BrazilianCulturalContext): Amount['type'] {
-    const text = amountMatch.toLowerCase();
+  private determineAmountType(amountMatch: string, text: string, context: BrazilianCulturalContext): Amount['type'] {
+    const textLower = text.toLowerCase();
+    const amountMatchLower = amountMatch.toLowerCase();
     
-    if (text.includes('desconto') || text.includes('promoção') || text.includes('promocao')) {
+    // Check the amount match itself
+    if (amountMatchLower.includes('desconto') || amountMatchLower.includes('promoção') || amountMatchLower.includes('promocao')) {
       return 'discount';
     }
     
-    if (text.includes('taxa') || text.includes('serviço') || text.includes('servico')) {
+    if (amountMatchLower.includes('taxa') || amountMatchLower.includes('serviço') || amountMatchLower.includes('servico')) {
       return 'tax';
     }
     
-    if (text.includes('gorjeta') || text.includes('caixinha')) {
+    if (amountMatchLower.includes('gorjeta') || amountMatchLower.includes('caixinha')) {
       return 'tip';
     }
     
-    if (text.includes('por pessoa') || text.includes('por pessoa')) {
+    if (amountMatchLower.includes('por pessoa') || amountMatchLower.includes('por pessoa')) {
       return 'per_person';
     }
     
-    if (text.includes('por família') || text.includes('por familia')) {
+    if (amountMatchLower.includes('por família') || amountMatchLower.includes('por familia')) {
       return 'per_group';
+    }
+    
+    // Check the full text context for discount indicators
+    if (textLower.includes('desconto') || textLower.includes('promoção') || textLower.includes('promocao') || 
+        textLower.includes('menos') || textLower.includes('abatimento') || textLower.includes('%')) {
+      return 'discount';
     }
     
     return 'total';

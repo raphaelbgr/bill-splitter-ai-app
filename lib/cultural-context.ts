@@ -610,6 +610,10 @@ export class BrazilianCulturalContextAnalyzer {
 
     // Fallback social dynamics detection with improved patterns
     const dynamicsPatterns = {
+      rodizio: [
+        'rodízio', 'rodizio', 'rodada', 'rodadas', 'pagar rodada',
+        'cada um paga uma rodada', 'pagar a rodada', 'pagar a vez'
+      ],
       igual: ['igual', 'mesmo', 'mesma', 'mesmos', 'mesmas', 'cada um igual', 'divide igual'],
       por_consumo: [
         'consumo', 'consumiu', 'consumiram', 'cada um paga o que consumiu',
@@ -635,7 +639,14 @@ export class BrazilianCulturalContextAnalyzer {
       ]
     };
 
-    // Check for complex scenarios first (they might contain other keywords)
+    // Check for rodizio scenarios first (they are specific)
+    for (const pattern of dynamicsPatterns.rodizio) {
+      if (normalizedText.includes(pattern.toLowerCase())) {
+        return 'rodizio';
+      }
+    }
+
+    // Check for complex scenarios (they might contain other keywords)
     for (const pattern of dynamicsPatterns.complexo) {
       if (normalizedText.includes(pattern.toLowerCase())) {
         return 'complexo';
@@ -651,7 +662,7 @@ export class BrazilianCulturalContextAnalyzer {
 
     // Check other patterns
     for (const [dynamics, patterns] of Object.entries(dynamicsPatterns)) {
-      if (dynamics === 'complexo' || dynamics === 'por_consumo') continue; // Already checked
+      if (dynamics === 'rodizio' || dynamics === 'complexo' || dynamics === 'por_consumo') continue; // Already checked
       for (const pattern of patterns) {
         if (normalizedText.includes(pattern.toLowerCase())) {
           return dynamics as SocialDynamics;

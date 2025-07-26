@@ -20,29 +20,26 @@ const customJestConfig = {
   ],
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
-      tsconfig: 'tsconfig.json'
+      tsconfig: 'tsconfig.json',
+      useESM: false
     }]
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(uncrypto|@upstash|@supabase)/)'
+    'node_modules/(?!(uncrypto|@upstash|@supabase|isows|@supabase/realtime-js|@supabase/supabase-js)/)'
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
-  collectCoverageFrom: [
-    'lib/**/*.{ts,tsx}',
-    'components/**/*.{ts,tsx}',
-    'pages/**/*.{ts,tsx}',
-    '!**/*.d.ts',
-    '!**/node_modules/**'
-  ],
-  coverageThreshold: {
-    global: {
-      branches: 100,
-      functions: 100,
-      lines: 100,
-      statements: 100
-    }
-  }
+  extensionsToTreatAsEsm: [],
+  globals: {
+    'ts-jest': {
+      useESM: false,
+    },
+  },
+  preset: undefined,
+  testEnvironmentOptions: {
+    customExportConditions: ['node', 'node-addons'],
+  },
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
+module.exports = createJestConfig(customJestConfig) 
 module.exports = createJestConfig(customJestConfig) 

@@ -4,22 +4,39 @@ import { BrazilianMobilePaymentService } from '../../../lib/mobile-payment-servi
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { method } = req;
 
-  if (method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
+  if (method !== 'GET' && method !== 'POST') {
+    res.setHeader('Allow', ['GET', 'POST']);
     return res.status(405).json({ error: `Method ${method} Not Allowed` });
   }
 
   const mobilePaymentService = new BrazilianMobilePaymentService();
 
   try {
-    const {
-      userId,
-      amount,
-      region = 'BR',
-      socialContext,
-      deviceType = 'mobile',
-      networkType = 'wifi'
-    } = req.body;
+    let userId: string;
+    let amount: number;
+    let region: string;
+    let socialContext: string;
+    let deviceType: string;
+    let networkType: string;
+
+    if (method === 'GET') {
+      // Extract from query parameters
+      userId = req.query.userId as string;
+      amount = parseFloat(req.query.amount as string);
+      region = (req.query.region as string) || 'BR';
+      socialContext = (req.query.socialContext as string) || 'casual';
+      deviceType = (req.query.deviceType as string) || 'mobile';
+      networkType = (req.query.networkType as string) || 'wifi';
+    } else {
+      // Extract from body
+      const body = req.body;
+      userId = body.userId;
+      amount = body.amount;
+      region = body.region || 'BR';
+      socialContext = body.socialContext;
+      deviceType = body.deviceType || 'mobile';
+      networkType = body.networkType || 'wifi';
+    }
 
     // Validate required fields
     if (!userId || !amount || !socialContext) {

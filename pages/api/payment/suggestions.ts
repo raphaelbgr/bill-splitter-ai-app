@@ -2,12 +2,31 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { BrazilianPaymentSystem } from '../../../lib/payment-system';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    res.setHeader('Allow', ['GET', 'POST']);
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 
-  const { userId, amount, context } = req.body;
+  let userId: string;
+  let amount: number;
+  let context: any;
+
+  if (req.method === 'GET') {
+    // Extract from query parameters
+    userId = req.query.userId as string;
+    amount = parseFloat(req.query.amount as string);
+    context = {
+      participants: parseInt(req.query.participants as string) || 2,
+      occasion: req.query.occasion as string || 'casual',
+      socialContext: req.query.socialContext as string || 'friends'
+    };
+  } else {
+    // Extract from body
+    const body = req.body;
+    userId = body.userId;
+    amount = body.amount;
+    context = body.context;
+  }
 
   if (!userId || !amount || !context) {
     return res.status(400).json({ 

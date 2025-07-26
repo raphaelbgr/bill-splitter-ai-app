@@ -1,17 +1,30 @@
 jest.mock('../lib/redis-client', () => ({
-  redisClient: {
-    hset: jest.fn(),
-    hgetall: jest.fn(),
-    hget: jest.fn(),
+  RedisCache: jest.fn().mockImplementation(() => ({
+    setSession: jest.fn(),
+    getSession: jest.fn(),
+    setConversation: jest.fn(),
+    getConversation: jest.fn(),
+    setUserPreferences: jest.fn(),
+    getUserPreferences: jest.fn(),
+    setContext: jest.fn(),
+    getContext: jest.fn(),
+    setPatterns: jest.fn(),
+    getPatterns: jest.fn(),
+    invalidateSession: jest.fn(),
+    invalidateConversation: jest.fn(),
+    healthCheck: jest.fn(),
+    close: jest.fn(),
+    setex: jest.fn(),
     get: jest.fn(),
-    set: jest.fn(),
     del: jest.fn(),
-    keys: jest.fn()
-  }
+    keys: jest.fn(),
+    ttl: jest.fn(),
+    expire: jest.fn()
+  }))
 }));
 
 import { BrazilianPaymentSystem } from '../lib/payment-system';
-import { redisClient } from '../lib/redis-client';
+import { RedisCache } from '../lib/redis-client';
 
 describe('BrazilianPaymentSystem', () => {
   let paymentSystem: BrazilianPaymentSystem;
@@ -34,7 +47,9 @@ describe('BrazilianPaymentSystem', () => {
         updatedAt: new Date()
       };
 
-      (redisClient.hset as jest.Mock).mockResolvedValue(1);
+      // Mock the Redis hset method
+      const mockHset = jest.fn().mockResolvedValue(1);
+      (paymentSystem as any).redis.hset = mockHset;
 
       const result = await paymentSystem.generatePIXKey(testUserId, 'email', 'test@example.com');
 
@@ -45,7 +60,7 @@ describe('BrazilianPaymentSystem', () => {
         isActive: true
       });
       expect(result.id).toMatch(/^pix_\d+_[a-z0-9]+$/);
-      expect(redisClient.hset).toHaveBeenCalledWith(
+      expect(mockHset).toHaveBeenCalledWith(
         `user:${testUserId}:pix_keys`,
         expect.any(String),
         expect.any(String)
@@ -74,7 +89,9 @@ describe('BrazilianPaymentSystem', () => {
         })
       };
 
-      (redisClient.hgetall as jest.Mock).mockResolvedValue(mockKeys);
+      // Mock the Redis hgetall method
+      const mockHgetall = jest.fn().mockResolvedValue(mockKeys);
+      (paymentSystem as any).redis.hgetall = mockHgetall;
 
       const result = await paymentSystem.getPIXKeys(testUserId);
 
@@ -102,13 +119,18 @@ describe('BrazilianPaymentSystem', () => {
         updatedAt: new Date()
       };
 
-      (redisClient.hget as jest.Mock).mockResolvedValue(JSON.stringify(mockKey));
-      (redisClient.hset as jest.Mock).mockResolvedValue(1);
+      // Mock the Redis hget method
+      const mockHget = jest.fn().mockResolvedValue(JSON.stringify(mockKey));
+      (paymentSystem as any).redis.hget = mockHget;
+
+      // Mock the Redis hset method
+      const mockHset = jest.fn().mockResolvedValue(1);
+      (paymentSystem as any).redis.hset = mockHset;
 
       const result = await paymentSystem.updatePIXKey(testUserId, 'pix_1', { isActive: false });
 
       expect(result.isActive).toBe(false);
-      expect(redisClient.hset).toHaveBeenCalledWith(
+      expect(mockHset).toHaveBeenCalledWith(
         `user:${testUserId}:pix_keys`,
         'pix_1',
         expect.any(String)
@@ -116,7 +138,9 @@ describe('BrazilianPaymentSystem', () => {
     });
 
     test('should throw error when PIX key not found', async () => {
-      (redisClient.hget as jest.Mock).mockResolvedValue(null);
+      // Mock the Redis hget method to return null
+      const mockHget = jest.fn().mockResolvedValue(null);
+      (paymentSystem as any).redis.hget = mockHget;
 
       await expect(
         paymentSystem.updatePIXKey(testUserId, 'nonexistent', { isActive: false })
@@ -126,8 +150,13 @@ describe('BrazilianPaymentSystem', () => {
 
   describe('Payment Preferences', () => {
     test('should get default payment preferences when none exist', async () => {
-      (redisClient.get as jest.Mock).mockResolvedValue(null);
-      (redisClient.set as jest.Mock).mockResolvedValue('OK');
+      // Mock the Redis get method to return null
+      const mockGet = jest.fn().mockResolvedValue(null);
+      (paymentSystem as any).redis.get = mockGet;
+
+      // Mock the Redis set method to return 'OK'
+      const mockSet = jest.fn().mockResolvedValue('OK');
+      (paymentSystem as any).redis.set = mockSet;
 
       const result = await paymentSystem.getPaymentPreferences(testUserId);
 
@@ -140,7 +169,7 @@ describe('BrazilianPaymentSystem', () => {
         socialPaymentEnabled: true,
         pixKeys: []
       });
-      expect(redisClient.set).toHaveBeenCalledWith(
+      expect(mockSet).toHaveBeenCalledWith(
         `user:${testUserId}:payment_preferences`,
         expect.any(String)
       );
@@ -159,7 +188,9 @@ describe('BrazilianPaymentSystem', () => {
         updatedAt: new Date()
       };
 
-      (redisClient.get as jest.Mock).mockResolvedValue(JSON.stringify(mockPreferences));
+      // Mock the Redis get method
+      const mockGet = jest.fn().mockResolvedValue(JSON.stringify(mockPreferences));
+      (paymentSystem as any).redis.get = mockGet;
 
       const result = await paymentSystem.getPaymentPreferences(testUserId);
 
@@ -185,8 +216,13 @@ describe('BrazilianPaymentSystem', () => {
         updatedAt: new Date()
       };
 
-      (redisClient.get as jest.Mock).mockResolvedValue(JSON.stringify(existingPreferences));
-      (redisClient.set as jest.Mock).mockResolvedValue('OK');
+      // Mock the Redis get method
+      const mockGet = jest.fn().mockResolvedValue(JSON.stringify(existingPreferences));
+      (paymentSystem as any).redis.get = mockGet;
+
+      // Mock the Redis set method
+      const mockSet = jest.fn().mockResolvedValue('OK');
+      (paymentSystem as any).redis.set = mockSet;
 
       const updates = {
         preferredMethod: 'transfer' as const,
@@ -228,10 +264,15 @@ describe('BrazilianPaymentSystem', () => {
         }
       ];
 
-      (redisClient.get as jest.Mock).mockResolvedValue(JSON.stringify(mockPreferences));
-      (redisClient.hgetall as jest.Mock).mockResolvedValue({
+      // Mock the Redis get method
+      const mockGet = jest.fn().mockResolvedValue(JSON.stringify(mockPreferences));
+      (paymentSystem as any).redis.get = mockGet;
+
+      // Mock the Redis hgetall method
+      const mockHgetall = jest.fn().mockResolvedValue({
         'pix_1': JSON.stringify(mockPixKeys[0])
       });
+      (paymentSystem as any).redis.hgetall = mockHgetall;
     });
 
     test('should generate PIX suggestion for small amount', async () => {
@@ -311,7 +352,9 @@ describe('BrazilianPaymentSystem', () => {
 
   describe('Debt Tracking', () => {
     test('should create debt tracking entry', async () => {
-      (redisClient.hset as jest.Mock).mockResolvedValue(1);
+      // Mock the Redis hset method
+      const mockHset = jest.fn().mockResolvedValue(1);
+      (paymentSystem as any).redis.hset = mockHset;
 
       const debtData = {
         amount: 100.0,
@@ -368,7 +411,9 @@ describe('BrazilianPaymentSystem', () => {
         })
       };
 
-      (redisClient.hgetall as jest.Mock).mockResolvedValue(mockDebts);
+      // Mock the Redis hgetall method
+      const mockHgetall = jest.fn().mockResolvedValue(mockDebts);
+      (paymentSystem as any).redis.hgetall = mockHgetall;
 
       const result = await paymentSystem.getDebts(testUserId);
 
@@ -400,13 +445,18 @@ describe('BrazilianPaymentSystem', () => {
         updatedAt: new Date()
       };
 
-      (redisClient.hget as jest.Mock).mockResolvedValue(JSON.stringify(mockDebt));
-      (redisClient.hset as jest.Mock).mockResolvedValue(1);
+      // Mock the Redis hget method
+      const mockHget = jest.fn().mockResolvedValue(JSON.stringify(mockDebt));
+      (paymentSystem as any).redis.hget = mockHget;
+
+      // Mock the Redis hset method
+      const mockHset = jest.fn().mockResolvedValue(1);
+      (paymentSystem as any).redis.hset = mockHset;
 
       const result = await paymentSystem.updateDebtStatus(testUserId, 'debt_1', 'paid');
 
       expect(result.status).toBe('paid');
-      expect(redisClient.hset).toHaveBeenCalledWith(
+      expect(mockHset).toHaveBeenCalledWith(
         `user:${testUserId}:debts`,
         'debt_1',
         expect.any(String)
@@ -414,7 +464,9 @@ describe('BrazilianPaymentSystem', () => {
     });
 
     test('should throw error when debt not found', async () => {
-      (redisClient.hget as jest.Mock).mockResolvedValue(null);
+      // Mock the Redis hget method to return null
+      const mockHget = jest.fn().mockResolvedValue(null);
+      (paymentSystem as any).redis.hget = mockHget;
 
       await expect(
         paymentSystem.updateDebtStatus(testUserId, 'nonexistent', 'paid')
@@ -424,7 +476,9 @@ describe('BrazilianPaymentSystem', () => {
 
   describe('Payment Reminders', () => {
     test('should create payment reminder', async () => {
-      (redisClient.hset as jest.Mock).mockResolvedValue(1);
+      // Mock the Redis hset method
+      const mockHset = jest.fn().mockResolvedValue(1);
+      (paymentSystem as any).redis.hset = mockHset;
 
       const reminderData = {
         debtId: 'debt_1',
@@ -479,8 +533,13 @@ describe('BrazilianPaymentSystem', () => {
         })
       };
 
-      (redisClient.keys as jest.Mock).mockResolvedValue(['user:test-user-123:reminders']);
-      (redisClient.hgetall as jest.Mock).mockResolvedValue(mockReminders);
+      // Mock the Redis keys method
+      const mockKeys = jest.fn().mockResolvedValue(['user:test-user-123:reminders']);
+      (paymentSystem as any).redis.keys = mockKeys;
+
+      // Mock the Redis hgetall method
+      const mockHgetall = jest.fn().mockResolvedValue(mockReminders);
+      (paymentSystem as any).redis.hgetall = mockHgetall;
 
       const result = await paymentSystem.getPendingReminders();
 
@@ -502,12 +561,17 @@ describe('BrazilianPaymentSystem', () => {
         sentAt: undefined
       };
 
-      (redisClient.hget as jest.Mock).mockResolvedValue(JSON.stringify(mockReminder));
-      (redisClient.hset as jest.Mock).mockResolvedValue(1);
+      // Mock the Redis hget method
+      const mockHget = jest.fn().mockResolvedValue(JSON.stringify(mockReminder));
+      (paymentSystem as any).redis.hget = mockHget;
+
+      // Mock the Redis hset method
+      const mockHset = jest.fn().mockResolvedValue(1);
+      (paymentSystem as any).redis.hset = mockHset;
 
       await paymentSystem.markReminderSent(testUserId, 'reminder_1');
 
-      expect(redisClient.hset).toHaveBeenCalledWith(
+      expect(mockHset).toHaveBeenCalledWith(
         `user:${testUserId}:reminders`,
         'reminder_1',
         expect.stringContaining('"status":"sent"')
@@ -515,7 +579,9 @@ describe('BrazilianPaymentSystem', () => {
     });
 
     test('should throw error when reminder not found', async () => {
-      (redisClient.hget as jest.Mock).mockResolvedValue(null);
+      // Mock the Redis hget method to return null
+      const mockHget = jest.fn().mockResolvedValue(null);
+      (paymentSystem as any).redis.hget = mockHget;
 
       await expect(
         paymentSystem.markReminderSent(testUserId, 'nonexistent')
@@ -563,10 +629,14 @@ describe('BrazilianPaymentSystem', () => {
         }
       ];
 
-      (redisClient.get as jest.Mock).mockResolvedValue(JSON.stringify(mockPreferences));
-      (redisClient.hgetall as jest.Mock)
-        .mockResolvedValueOnce({ 'pix_1': JSON.stringify(mockPixKeys[0]) })
+      // Mock the Redis get method
+      const mockGet = jest.fn().mockResolvedValue(JSON.stringify(mockPreferences));
+      (paymentSystem as any).redis.get = mockGet;
+
+      // Mock the Redis hgetall method
+      const mockHgetall = jest.fn().mockResolvedValueOnce({ 'pix_1': JSON.stringify(mockPixKeys[0]) })
         .mockResolvedValueOnce({ 'debt_1': JSON.stringify(mockDebts[0]) });
+      (paymentSystem as any).redis.hgetall = mockHgetall;
 
       const result = await paymentSystem.exportUserPaymentData(testUserId);
 
@@ -596,14 +666,16 @@ describe('BrazilianPaymentSystem', () => {
     });
 
     test('should delete all user payment data', async () => {
-      (redisClient.del as jest.Mock).mockResolvedValue(1);
+      // Mock the Redis del method
+      const mockDel = jest.fn().mockResolvedValue(1);
+      (paymentSystem as any).redis.del = mockDel;
 
       await paymentSystem.deleteUserPaymentData(testUserId);
 
-      expect(redisClient.del).toHaveBeenCalledWith(`user:${testUserId}:payment_preferences`);
-      expect(redisClient.del).toHaveBeenCalledWith(`user:${testUserId}:pix_keys`);
-      expect(redisClient.del).toHaveBeenCalledWith(`user:${testUserId}:debts`);
-      expect(redisClient.del).toHaveBeenCalledWith(`user:${testUserId}:reminders`);
+      expect(mockDel).toHaveBeenCalledWith(`user:${testUserId}:payment_preferences`);
+      expect(mockDel).toHaveBeenCalledWith(`user:${testUserId}:pix_keys`);
+      expect(mockDel).toHaveBeenCalledWith(`user:${testUserId}:debts`);
+      expect(mockDel).toHaveBeenCalledWith(`user:${testUserId}:reminders`);
     });
   });
 

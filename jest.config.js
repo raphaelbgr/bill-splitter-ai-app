@@ -24,7 +24,7 @@ const customJestConfig = {
     }]
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(uncrypto|@upstash)/)'
+    'node_modules/(?!(uncrypto|@upstash|@supabase)/)'
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   collectCoverageFrom: [

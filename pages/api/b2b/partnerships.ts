@@ -9,66 +9,51 @@ const supabase = createClient(
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
-      const { businessId, partnershipId } = req.query;
+      const { partnership_id } = req.query;
 
-      if (!businessId) {
-        return res.status(400).json({ error: 'Business ID is required' });
-      }
-
-      if (partnershipId) {
-        // Get specific partnership with details
-        const { data: partnership, error: partnershipError } = await supabase
+      if (partnership_id) {
+        // Get specific partnership data
+        const { data: partnership, error } = await supabase
           .from('b2b_partnerships')
-          .select(`
-            *,
-            performance:b2b_partnership_performance(*),
-            transactions:b2b_partnership_transactions(*)
-          `)
-          .eq('id', partnershipId)
-          .eq('business_id', businessId)
+          .select('*')
+          .eq('id', partnership_id)
           .single();
 
-        if (partnershipError) {
-          return res.status(404).json({ error: 'Partnership not found' });
+        if (error) {
+          return res.status(404).json({ error: 'Parceria não encontrada' });
         }
 
-        return res.status(200).json({ partnership });
+        // Get revenue data for this partnership
+        const { data: revenueData, error: revenueError } = await supabase
+          .from('b2b_partnership_revenue')
+          .select('*')
+          .eq('partnership_id', partnership_id)
+          .order('month', { ascending: false });
+
+        if (revenueError) {
+          return res.status(500).json({ error: 'Erro ao buscar dados de receita' });
+        }
+
+        return res.status(200).json({
+          partnership,
+          revenue_data: revenueData
+        });
       } else {
-        // Get all partnerships for business
-        const { data: partnerships, error: partnershipsError } = await supabase
+        // Get all partnerships for the authenticated user
+        const { data: partnerships, error } = await supabase
           .from('b2b_partnerships')
-          .select(`
-            *,
-            performance:b2b_partnership_performance(*)
-          `)
-          .eq('business_id', businessId)
+          .select('*')
           .order('created_at', { ascending: false });
 
-        if (partnershipsError) {
-          return res.status(500).json({ error: 'Failed to fetch partnerships' });
+        if (error) {
+          return res.status(500).json({ error: 'Erro ao buscar parcerias' });
         }
 
-        // Calculate analytics
-        const totalRevenue = partnerships?.reduce((sum, p) => sum + (p.total_revenue || 0), 0) || 0;
-        const activePartnerships = partnerships?.filter(p => p.status === 'active').length || 0;
-        const averageRating = partnerships?.length > 0 
-          ? partnerships.reduce((sum, p) => sum + (p.rating || 0), 0) / partnerships.length 
-          : 0;
-
-        const analytics = {
-          totalRevenue,
-          activePartnerships,
-          averageRating,
-          totalPartnerships: partnerships?.length || 0,
-          monthlyGrowth: 13.7, // Mock calculation
-          retentionRate: 94.2 // Mock calculation
-        };
-
-        return res.status(200).json({ partnerships, analytics });
+        return res.status(200).json(partnerships);
       }
     } catch (error) {
-      console.error('B2B Partnerships API Error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Erro na API de parcerias:', error);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
     }
   }
 
@@ -78,130 +63,226 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       switch (action) {
         case 'create_partnership':
-          const { data: partnershipCreate, error: partnershipCreateError } = await supabase
+          const { name, type, contact_person, contact_email, contact_phone, revenue_share } = data;
+
+          if (!name || !type || !contact_person || !contact_email) {
+            return res.status(400).json({ error: 'Campos obrigatórios não preenchidos' });
+          }
+
+          const { data: partnership, error: partnershipError } = await supabase
             .from('b2b_partnerships')
-            .insert(data)
-            .select();
-
-          if (partnershipCreateError) {
-            return res.status(500).json({ error: 'Failed to create partnership' });
-          }
-
-          // Create initial performance record
-          const performanceData = {
-            partnership_id: partnershipCreate[0].id,
-            revenue_growth: 0,
-            customer_growth: 0,
-            satisfaction_score: 0,
-            response_time: 0,
-            completion_rate: 0,
-            monthly_transactions: 0
-          };
-
-          const { error: performanceError } = await supabase
-            .from('b2b_partnership_performance')
-            .insert(performanceData);
-
-          if (performanceError) {
-            console.error('Failed to create performance record:', performanceError);
-          }
-
-          return res.status(200).json({ partnership: partnershipCreate[0] });
-
-        case 'update_partnership':
-          const { data: partnershipUpdate, error: partnershipUpdateError } = await supabase
-            .from('b2b_partnerships')
-            .update(data)
-            .eq('id', data.id)
-            .select();
-
-          if (partnershipUpdateError) {
-            return res.status(500).json({ error: 'Failed to update partnership' });
-          }
-
-          return res.status(200).json({ partnership: partnershipUpdate[0] });
-
-        case 'update_performance':
-          const { data: performanceUpdate, error: performanceUpdateError } = await supabase
-            .from('b2b_partnership_performance')
-            .upsert(data)
-            .select();
-
-          if (performanceUpdateError) {
-            return res.status(500).json({ error: 'Failed to update performance' });
-          }
-
-          return res.status(200).json({ performance: performanceUpdate[0] });
-
-        case 'add_transaction':
-          const { data: transactionAdd, error: transactionAddError } = await supabase
-            .from('b2b_partnership_transactions')
-            .insert(data)
-            .select();
-
-          if (transactionAddError) {
-            return res.status(500).json({ error: 'Failed to add transaction' });
-          }
-
-          // Update partnership revenue
-          const { error: revenueUpdateError } = await supabase
-            .from('b2b_partnerships')
-            .update({ 
-              total_revenue: supabase.rpc('increment_revenue', { 
-                partnership_id: data.partnership_id, 
-                amount: data.amount 
-              })
+            .insert({
+              name,
+              type,
+              status: 'pending',
+              revenue_share: revenue_share || 0.05,
+              total_revenue: 0,
+              monthly_revenue: 0,
+              customer_count: 0,
+              contact_person,
+              contact_email,
+              contact_phone
             })
-            .eq('id', data.partnership_id);
+            .select()
+            .single();
 
-          if (revenueUpdateError) {
-            console.error('Failed to update revenue:', revenueUpdateError);
+          if (partnershipError) {
+            return res.status(500).json({ error: 'Erro ao criar parceria' });
           }
 
-          return res.status(200).json({ transaction: transactionAdd[0] });
+          return res.status(201).json(partnership);
 
-        case 'get_analytics':
-          const { businessId: analyticsBusinessId, dateRange } = data;
-          
-          let query = supabase
+        case 'add_revenue':
+          const { partnership_id, month, revenue, transactions, customers, growth_rate } = data;
+
+          if (!partnership_id || !month || !revenue) {
+            return res.status(400).json({ error: 'Campos obrigatórios não preenchidos' });
+          }
+
+          const { data: revenueRecord, error: revenueError } = await supabase
+            .from('b2b_partnership_revenue')
+            .insert({
+              partnership_id,
+              month,
+              revenue,
+              transactions: transactions || 0,
+              customers: customers || 0,
+              growth_rate: growth_rate || 0
+            })
+            .select()
+            .single();
+
+          if (revenueError) {
+            return res.status(500).json({ error: 'Erro ao adicionar receita' });
+          }
+
+          // Update partnership totals
+          const { data: currentPartnership } = await supabase
             .from('b2b_partnerships')
-            .select('*')
-            .eq('business_id', analyticsBusinessId);
+            .select('total_revenue, monthly_revenue, customer_count')
+            .eq('id', partnership_id)
+            .single();
 
-          if (dateRange) {
-            const startDate = new Date();
-            startDate.setDate(startDate.getDate() - dateRange);
-            query = query.gte('created_at', startDate.toISOString());
+          if (currentPartnership) {
+            const newTotalRevenue = currentPartnership.total_revenue + revenue;
+            const newMonthlyRevenue = revenue; // Latest month
+            const newCustomerCount = Math.max(currentPartnership.customer_count, customers || 0);
+
+            await supabase
+              .from('b2b_partnerships')
+              .update({
+                total_revenue: newTotalRevenue,
+                monthly_revenue: newMonthlyRevenue,
+                customer_count: newCustomerCount
+              })
+              .eq('id', partnership_id);
           }
 
-          const { data: analyticsData, error: analyticsError } = await query;
+          return res.status(201).json(revenueRecord);
 
-          if (analyticsError) {
-            return res.status(500).json({ error: 'Failed to fetch analytics' });
+        case 'update_status':
+          const { partnership_id: statusPartnershipId, status } = data;
+
+          if (!statusPartnershipId || !status) {
+            return res.status(400).json({ error: 'Campos obrigatórios não preenchidos' });
           }
 
-          // Calculate analytics
-          const analytics = {
-            totalPartnerships: analyticsData.length,
-            activePartnerships: analyticsData.filter(p => p.status === 'active').length,
-            totalRevenue: analyticsData.reduce((sum, p) => sum + (p.total_revenue || 0), 0),
-            averageRating: analyticsData.length > 0 
-              ? analyticsData.reduce((sum, p) => sum + (p.rating || 0), 0) / analyticsData.length 
-              : 0,
-            growthRate: 15.3, // Mock calculation
-            retentionRate: 94.2 // Mock calculation
-          };
+          const { data: updatedPartnership, error: statusError } = await supabase
+            .from('b2b_partnerships')
+            .update({ status })
+            .eq('id', statusPartnershipId)
+            .select()
+            .single();
 
-          return res.status(200).json({ analytics });
+          if (statusError) {
+            return res.status(500).json({ error: 'Erro ao atualizar status da parceria' });
+          }
+
+          return res.status(200).json(updatedPartnership);
 
         default:
-          return res.status(400).json({ error: 'Invalid action' });
+          return res.status(400).json({ error: 'Ação inválida' });
       }
     } catch (error) {
-      console.error('B2B Partnerships API Error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Erro na API de parcerias:', error);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
     }
   }
 
-  return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method === 'PUT') {
+    try {
+      const { action, data } = req.body;
+
+      switch (action) {
+        case 'update_partnership':
+          const { partnership_id, updateData } = data;
+
+          if (!partnership_id) {
+            return res.status(400).json({ error: 'ID da parceria é obrigatório' });
+          }
+
+          const { data: partnership, error: partnershipError } = await supabase
+            .from('b2b_partnerships')
+            .update(updateData)
+            .eq('id', partnership_id)
+            .select()
+            .single();
+
+          if (partnershipError) {
+            return res.status(500).json({ error: 'Erro ao atualizar parceria' });
+          }
+
+          return res.status(200).json(partnership);
+
+        case 'update_revenue':
+          const { revenue_id, revenueUpdateData } = data;
+
+          if (!revenue_id) {
+            return res.status(400).json({ error: 'ID da receita é obrigatório' });
+          }
+
+          const { data: revenue, error: revenueError } = await supabase
+            .from('b2b_partnership_revenue')
+            .update(revenueUpdateData)
+            .eq('id', revenue_id)
+            .select()
+            .single();
+
+          if (revenueError) {
+            return res.status(500).json({ error: 'Erro ao atualizar receita' });
+          }
+
+          return res.status(200).json(revenue);
+
+        default:
+          return res.status(400).json({ error: 'Ação inválida' });
+      }
+    } catch (error) {
+      console.error('Erro na API de parcerias:', error);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  }
+
+  if (req.method === 'DELETE') {
+    try {
+      const { action, data } = req.body;
+
+      switch (action) {
+        case 'delete_partnership':
+          const { partnership_id } = data;
+
+          if (!partnership_id) {
+            return res.status(400).json({ error: 'ID da parceria é obrigatório' });
+          }
+
+          // Delete all revenue records for this partnership first
+          const { error: revenueDeleteError } = await supabase
+            .from('b2b_partnership_revenue')
+            .delete()
+            .eq('partnership_id', partnership_id);
+
+          if (revenueDeleteError) {
+            return res.status(500).json({ error: 'Erro ao deletar dados de receita da parceria' });
+          }
+
+          // Delete the partnership
+          const { error: partnershipDeleteError } = await supabase
+            .from('b2b_partnerships')
+            .delete()
+            .eq('id', partnership_id);
+
+          if (partnershipDeleteError) {
+            return res.status(500).json({ error: 'Erro ao deletar parceria' });
+          }
+
+          return res.status(200).json({ message: 'Parceria deletada com sucesso' });
+
+        case 'delete_revenue':
+          const { revenue_id } = data;
+
+          if (!revenue_id) {
+            return res.status(400).json({ error: 'ID da receita é obrigatório' });
+          }
+
+          const { error: revenueDeleteError } = await supabase
+            .from('b2b_partnership_revenue')
+            .delete()
+            .eq('id', revenue_id);
+
+          if (revenueDeleteError) {
+            return res.status(500).json({ error: 'Erro ao deletar receita' });
+          }
+
+          return res.status(200).json({ message: 'Receita deletada com sucesso' });
+
+        default:
+          return res.status(400).json({ error: 'Ação inválida' });
+      }
+    } catch (error) {
+      console.error('Erro na API de parcerias:', error);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  }
+
+  return res.status(405).json({ error: 'Método não permitido' });
 } 

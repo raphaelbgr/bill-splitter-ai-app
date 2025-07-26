@@ -9,65 +9,51 @@ const supabase = createClient(
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
-      const { businessId, batchId } = req.query;
+      const { operation_id } = req.query;
 
-      if (!businessId) {
-        return res.status(400).json({ error: 'Business ID is required' });
-      }
-
-      if (batchId) {
-        // Get specific batch details
-        const { data: batch, error: batchError } = await supabase
-          .from('b2b_batch_operations')
+      if (operation_id) {
+        // Get specific bulk operation
+        const { data: operation, error } = await supabase
+          .from('b2b_bulk_operations')
           .select('*')
-          .eq('id', batchId)
-          .eq('business_id', businessId)
+          .eq('id', operation_id)
           .single();
 
-        if (batchError) {
-          return res.status(404).json({ error: 'Batch not found' });
+        if (error) {
+          return res.status(404).json({ error: 'Operação não encontrada' });
         }
 
-        // Get batch items
-        const { data: batchItems, error: itemsError } = await supabase
-          .from('b2b_bulk_expenses')
-          .select('*')
-          .eq('batch_id', batchId);
-
-        if (itemsError) {
-          return res.status(500).json({ error: 'Failed to fetch batch items' });
-        }
-
-        return res.status(200).json({ batch, items: batchItems });
-      } else {
-        // Get all batches for business
-        const { data: batches, error: batchesError } = await supabase
-          .from('b2b_batch_operations')
-          .select('*')
-          .eq('business_id', businessId)
-          .order('created_at', { ascending: false });
-
-        if (batchesError) {
-          return res.status(500).json({ error: 'Failed to fetch batches' });
-        }
-
-        // Get bulk expenses
+        // Get bulk expenses for this operation
         const { data: expenses, error: expensesError } = await supabase
           .from('b2b_bulk_expenses')
           .select('*')
-          .eq('business_id', businessId)
-          .order('created_at', { ascending: false })
-          .limit(50);
+          .eq('operation_id', operation_id)
+          .order('created_at', { ascending: false });
 
         if (expensesError) {
-          return res.status(500).json({ error: 'Failed to fetch expenses' });
+          return res.status(500).json({ error: 'Erro ao buscar despesas' });
         }
 
-        return res.status(200).json({ batches, expenses });
+        return res.status(200).json({
+          operation,
+          expenses
+        });
+      } else {
+        // Get all bulk operations for the authenticated user
+        const { data: operations, error } = await supabase
+          .from('b2b_bulk_operations')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          return res.status(500).json({ error: 'Erro ao buscar operações' });
+        }
+
+        return res.status(200).json(operations);
       }
     } catch (error) {
-      console.error('B2B Bulk API Error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Erro na API de operações em lote:', error);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
     }
   }
 
@@ -76,124 +62,296 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { action, data } = req.body;
 
       switch (action) {
-        case 'create_batch':
-          const { data: batchCreate, error: batchCreateError } = await supabase
-            .from('b2b_batch_operations')
-            .insert(data)
-            .select();
+        case 'create_operation':
+          const { name, description, type, settings } = data;
 
-          if (batchCreateError) {
-            return res.status(500).json({ error: 'Failed to create batch' });
+          if (!name || !type) {
+            return res.status(400).json({ error: 'Campos obrigatórios não preenchidos' });
           }
 
-          return res.status(200).json({ batch: batchCreate[0] });
+          const { data: operation, error: operationError } = await supabase
+            .from('b2b_bulk_operations')
+            .insert({
+              name,
+              description,
+              type,
+              status: 'pending',
+              progress: 0,
+              total_items: 0,
+              processed_items: 0,
+              settings: settings || {}
+            })
+            .select()
+            .single();
 
-        case 'import_expenses':
-          // Process bulk import
-          const { expenses, batchId } = data;
-          
-          const { data: expensesInsert, error: expensesError } = await supabase
+          if (operationError) {
+            return res.status(500).json({ error: 'Erro ao criar operação' });
+          }
+
+          return res.status(201).json(operation);
+
+        case 'upload_expenses':
+          const { operation_id, expenses } = data;
+
+          if (!operation_id || !expenses || !Array.isArray(expenses)) {
+            return res.status(400).json({ error: 'Dados inválidos' });
+          }
+
+          // Process and validate expenses
+          const processedExpenses = expenses.map((expense: any) => ({
+            operation_id,
+            description: expense.description,
+            amount: parseFloat(expense.amount),
+            category: expense.category || 'outros',
+            date: expense.date,
+            participants: expense.participants || [],
+            split_method: expense.split_method || 'equal',
+            status: 'pending',
+            notes: expense.notes
+          }));
+
+          const { data: bulkExpenses, error: expensesError } = await supabase
             .from('b2b_bulk_expenses')
-            .insert(expenses)
+            .insert(processedExpenses)
             .select();
 
           if (expensesError) {
-            return res.status(500).json({ error: 'Failed to import expenses' });
+            return res.status(500).json({ error: 'Erro ao processar despesas' });
           }
 
-          // Update batch status
-          const { error: batchUpdateError } = await supabase
-            .from('b2b_batch_operations')
-            .update({ 
-              status: 'completed',
-              processed_items: expenses.length,
-              success_count: expenses.length,
-              completed_at: new Date().toISOString()
-            })
-            .eq('id', batchId);
+          // Update operation with total items count
+          const { error: updateError } = await supabase
+            .from('b2b_bulk_operations')
+            .update({ total_items: processedExpenses.length })
+            .eq('id', operation_id);
 
-          if (batchUpdateError) {
-            return res.status(500).json({ error: 'Failed to update batch status' });
+          if (updateError) {
+            console.error('Erro ao atualizar contagem de itens:', updateError);
           }
 
-          return res.status(200).json({ 
-            expenses: expensesInsert,
-            message: `Successfully imported ${expenses.length} expenses`
+          return res.status(201).json({
+            operation_id,
+            expenses: bulkExpenses
           });
 
-        case 'process_batch':
-          const { batchId: processBatchId, operation } = data;
-          
-          // Update batch status to running
-          const { error: statusError } = await supabase
-            .from('b2b_batch_operations')
-            .update({ 
-              status: 'running',
-              started_at: new Date().toISOString()
-            })
-            .eq('id', processBatchId);
+        case 'process_expenses':
+          const { operation_id: processOperationId, expense_ids } = data;
 
-          if (statusError) {
-            return res.status(500).json({ error: 'Failed to start batch processing' });
+          if (!processOperationId || !expense_ids || !Array.isArray(expense_ids)) {
+            return res.status(400).json({ error: 'Dados inválidos' });
           }
 
-          // Simulate batch processing
-          setTimeout(async () => {
-            const { error: completeError } = await supabase
-              .from('b2b_batch_operations')
-              .update({ 
-                status: 'completed',
-                completed_at: new Date().toISOString()
+          // Update expenses status to processed
+          const { data: updatedExpenses, error: processError } = await supabase
+            .from('b2b_bulk_expenses')
+            .update({ status: 'processed' })
+            .in('id', expense_ids)
+            .select();
+
+          if (processError) {
+            return res.status(500).json({ error: 'Erro ao processar despesas' });
+          }
+
+          // Update operation progress
+          const { data: operation } = await supabase
+            .from('b2b_bulk_operations')
+            .select('processed_items, total_items')
+            .eq('id', processOperationId)
+            .single();
+
+          if (operation) {
+            const newProcessedCount = (operation.processed_items || 0) + expense_ids.length;
+            const progress = Math.round((newProcessedCount / operation.total_items) * 100);
+
+            await supabase
+              .from('b2b_bulk_operations')
+              .update({
+                processed_items: newProcessedCount,
+                progress,
+                status: progress >= 100 ? 'completed' : 'running'
               })
-              .eq('id', processBatchId);
+              .eq('id', processOperationId);
+          }
 
-            if (completeError) {
-              console.error('Failed to complete batch:', completeError);
-            }
-          }, 5000);
-
-          return res.status(200).json({ 
-            message: 'Batch processing started',
-            batchId: processBatchId
+          return res.status(200).json({
+            processed_count: updatedExpenses.length,
+            operation_id: processOperationId
           });
 
-        case 'export_data':
-          const { businessId: exportBusinessId, filters } = data;
-          
-          let query = supabase
+        case 'categorize_expenses':
+          const { operation_id: categorizeOperationId, categorization_rules } = data;
+
+          if (!categorizeOperationId || !categorization_rules) {
+            return res.status(400).json({ error: 'Dados inválidos' });
+          }
+
+          // Get pending expenses for this operation
+          const { data: pendingExpenses, error: fetchError } = await supabase
             .from('b2b_bulk_expenses')
             .select('*')
-            .eq('business_id', exportBusinessId);
+            .eq('operation_id', categorizeOperationId)
+            .eq('status', 'pending');
 
-          if (filters?.dateRange) {
-            const startDate = new Date();
-            startDate.setDate(startDate.getDate() - filters.dateRange);
-            query = query.gte('created_at', startDate.toISOString());
+          if (fetchError) {
+            return res.status(500).json({ error: 'Erro ao buscar despesas' });
           }
 
-          if (filters?.category) {
-            query = query.eq('category', filters.category);
+          // Apply categorization rules
+          const categorizedExpenses = pendingExpenses.map((expense) => {
+            let category = expense.category;
+            
+            // Apply categorization rules
+            for (const rule of categorization_rules) {
+              if (expense.description.toLowerCase().includes(rule.keyword.toLowerCase())) {
+                category = rule.category;
+                break;
+              }
+            }
+
+            return {
+              id: expense.id,
+              category
+            };
+          });
+
+          // Update expenses with new categories
+          const { data: updatedCategorizedExpenses, error: categorizeError } = await supabase
+            .from('b2b_bulk_expenses')
+            .upsert(categorizedExpenses)
+            .select();
+
+          if (categorizeError) {
+            return res.status(500).json({ error: 'Erro ao categorizar despesas' });
           }
 
-          const { data: exportData, error: exportError } = await query;
-
-          if (exportError) {
-            return res.status(500).json({ error: 'Failed to export data' });
-          }
-
-          return res.status(200).json({ 
-            data: exportData,
-            count: exportData.length
+          return res.status(200).json({
+            categorized_count: updatedCategorizedExpenses.length,
+            operation_id: categorizeOperationId
           });
 
         default:
-          return res.status(400).json({ error: 'Invalid action' });
+          return res.status(400).json({ error: 'Ação inválida' });
       }
     } catch (error) {
-      console.error('B2B Bulk API Error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Erro na API de operações em lote:', error);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
     }
   }
 
-  return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method === 'PUT') {
+    try {
+      const { action, data } = req.body;
+
+      switch (action) {
+        case 'update_operation':
+          const { operation_id, updateData } = data;
+
+          if (!operation_id) {
+            return res.status(400).json({ error: 'ID da operação é obrigatório' });
+          }
+
+          const { data: operation, error: operationError } = await supabase
+            .from('b2b_bulk_operations')
+            .update(updateData)
+            .eq('id', operation_id)
+            .select()
+            .single();
+
+          if (operationError) {
+            return res.status(500).json({ error: 'Erro ao atualizar operação' });
+          }
+
+          return res.status(200).json(operation);
+
+        case 'update_expense':
+          const { expense_id, expenseUpdateData } = data;
+
+          if (!expense_id) {
+            return res.status(400).json({ error: 'ID da despesa é obrigatório' });
+          }
+
+          const { data: expense, error: expenseError } = await supabase
+            .from('b2b_bulk_expenses')
+            .update(expenseUpdateData)
+            .eq('id', expense_id)
+            .select()
+            .single();
+
+          if (expenseError) {
+            return res.status(500).json({ error: 'Erro ao atualizar despesa' });
+          }
+
+          return res.status(200).json(expense);
+
+        default:
+          return res.status(400).json({ error: 'Ação inválida' });
+      }
+    } catch (error) {
+      console.error('Erro na API de operações em lote:', error);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  }
+
+  if (req.method === 'DELETE') {
+    try {
+      const { action, data } = req.body;
+
+      switch (action) {
+        case 'delete_operation':
+          const { operation_id } = data;
+
+          if (!operation_id) {
+            return res.status(400).json({ error: 'ID da operação é obrigatório' });
+          }
+
+          // Delete all expenses for this operation first
+          const { error: expensesDeleteError } = await supabase
+            .from('b2b_bulk_expenses')
+            .delete()
+            .eq('operation_id', operation_id);
+
+          if (expensesDeleteError) {
+            return res.status(500).json({ error: 'Erro ao deletar despesas da operação' });
+          }
+
+          // Delete the operation
+          const { error: operationDeleteError } = await supabase
+            .from('b2b_bulk_operations')
+            .delete()
+            .eq('id', operation_id);
+
+          if (operationDeleteError) {
+            return res.status(500).json({ error: 'Erro ao deletar operação' });
+          }
+
+          return res.status(200).json({ message: 'Operação deletada com sucesso' });
+
+        case 'delete_expense':
+          const { expense_id } = data;
+
+          if (!expense_id) {
+            return res.status(400).json({ error: 'ID da despesa é obrigatório' });
+          }
+
+          const { error: expenseDeleteError } = await supabase
+            .from('b2b_bulk_expenses')
+            .delete()
+            .eq('id', expense_id);
+
+          if (expenseDeleteError) {
+            return res.status(500).json({ error: 'Erro ao deletar despesa' });
+          }
+
+          return res.status(200).json({ message: 'Despesa deletada com sucesso' });
+
+        default:
+          return res.status(400).json({ error: 'Ação inválida' });
+      }
+    } catch (error) {
+      console.error('Erro na API de operações em lote:', error);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  }
+
+  return res.status(405).json({ error: 'Método não permitido' });
 } 

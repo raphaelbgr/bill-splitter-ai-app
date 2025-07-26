@@ -1,149 +1,99 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Building2, 
-  Users, 
-  DollarSign, 
-  TrendingUp, 
-  Settings, 
-  Plus,
-  Menu,
-  Receipt,
-  BarChart3,
-  Calendar,
-  CreditCard,
-  QrCode,
-  Download,
-  Upload,
-  Eye,
-  Edit,
-  Trash2,
-  CheckCircle,
-  AlertCircle,
-  Clock
-} from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
-interface RestaurantPartner {
+interface RestaurantData {
   id: string;
   name: string;
-  cnpj: string;
   address: string;
   phone: string;
   email: string;
-  status: 'active' | 'pending' | 'suspended';
-  partnershipDate: string;
-  revenueShare: number;
-  totalRevenue: number;
-  monthlyRevenue: number;
-  customerCount: number;
-  averageBill: number;
+  partnership_status: 'active' | 'pending' | 'inactive';
+  revenue_share: number;
+  total_transactions: number;
+  monthly_revenue: number;
+  customer_count: number;
 }
 
 interface MenuItem {
   id: string;
   name: string;
-  description: string;
   price: number;
   category: string;
+  description: string;
   available: boolean;
-  imageUrl?: string;
 }
 
-interface BillTransaction {
+interface Transaction {
   id: string;
-  customerName: string;
+  customer_name: string;
   amount: number;
-  participants: number;
-  splitMethod: string;
-  status: 'pending' | 'completed' | 'cancelled';
-  createdAt: string;
-  completedAt?: string;
+  split_count: number;
+  date: string;
+  status: 'completed' | 'pending' | 'cancelled';
 }
 
-interface RestaurantDashboardProps {
-  partnerId?: string;
-}
-
-export default function B2BRestaurantDashboard({ partnerId }: RestaurantDashboardProps) {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [restaurant, setRestaurant] = useState<RestaurantPartner | null>(null);
+const B2BRestaurantDashboard: React.FC = () => {
+  const [restaurantData, setRestaurantData] = useState<RestaurantData | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [recentBills, setRecentBills] = useState<BillTransaction[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showMenuModal, setShowMenuModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'transactions' | 'analytics'>('overview');
 
-  // Mock data for demonstration
   useEffect(() => {
-    const mockRestaurant: RestaurantPartner = {
-      id: 'rest-001',
-      name: 'Restaurante Brasileiro',
-      cnpj: '12.345.678/0001-90',
-      address: 'Rua das Flores, 123, São Paulo - SP',
-      phone: '(11) 3000-0000',
-      email: 'contato@restaurante.com',
-      status: 'active',
-      partnershipDate: '2024-01-15',
-      revenueShare: 0.05, // 5%
-      totalRevenue: 15420.50,
-      monthlyRevenue: 3850.25,
-      customerCount: 156,
-      averageBill: 98.85
-    };
+    loadRestaurantData();
+  }, []);
 
-    const mockMenuItems: MenuItem[] = [
-      {
-        id: 'menu-001',
-        name: 'Feijoada Completa',
-        description: 'Feijoada tradicional com todos os acompanhamentos',
-        price: 45.90,
-        category: 'Prato Principal',
-        available: true
-      },
-      {
-        id: 'menu-002',
-        name: 'Picanha na Brasa',
-        description: 'Picanha grelhada na brasa com farofa e vinagrete',
-        price: 68.50,
-        category: 'Prato Principal',
-        available: true
-      },
-      {
-        id: 'menu-003',
-        name: 'Caipirinha',
-        description: 'Caipirinha tradicional com limão e cachaça',
-        price: 18.90,
-        category: 'Bebidas',
-        available: true
-      }
-    ];
+  const loadRestaurantData = async () => {
+    try {
+      setLoading(true);
+      
+      // Simulate loading restaurant data
+      const mockRestaurantData: RestaurantData = {
+        id: 'rest_001',
+        name: 'Restaurante Brasileiro',
+        address: 'Rua das Flores, 123 - São Paulo, SP',
+        phone: '+55 11 99999-9999',
+        email: 'contato@restaurantebrasileiro.com.br',
+        partnership_status: 'active',
+        revenue_share: 0.05, // 5%
+        total_transactions: 1247,
+        monthly_revenue: 15420.50,
+        customer_count: 892
+      };
 
-    const mockBills: BillTransaction[] = [
-      {
-        id: 'bill-001',
-        customerName: 'João Silva',
-        amount: 156.80,
-        participants: 4,
-        splitMethod: 'equal',
-        status: 'completed',
-        createdAt: '2024-01-15T19:30:00Z',
-        completedAt: '2024-01-15T20:15:00Z'
-      },
-      {
-        id: 'bill-002',
-        customerName: 'Maria Santos',
-        amount: 89.50,
-        participants: 2,
-        splitMethod: 'proportional',
-        status: 'pending',
-        createdAt: '2024-01-15T20:45:00Z'
-      }
-    ];
+      const mockMenuItems: MenuItem[] = [
+        { id: '1', name: 'Feijoada Completa', price: 45.00, category: 'Prato Principal', description: 'Feijoada tradicional com todos os acompanhamentos', available: true },
+        { id: '2', name: 'Picanha na Brasa', price: 65.00, category: 'Prato Principal', description: 'Picanha grelhada na brasa com farofa', available: true },
+        { id: '3', name: 'Caipirinha', price: 18.00, category: 'Bebidas', description: 'Caipirinha tradicional com cachaça', available: true },
+        { id: '4', name: 'Brigadeiro', price: 8.00, category: 'Sobremesas', description: 'Brigadeiro caseiro', available: true }
+      ];
 
-    setRestaurant(mockRestaurant);
-    setMenuItems(mockMenuItems);
-    setRecentBills(mockBills);
-    setLoading(false);
-  }, [partnerId]);
+      const mockTransactions: Transaction[] = [
+        { id: '1', customer_name: 'João Silva', amount: 180.00, split_count: 4, date: '2024-12-15', status: 'completed' },
+        { id: '2', customer_name: 'Maria Santos', amount: 95.50, split_count: 2, date: '2024-12-14', status: 'completed' },
+        { id: '3', customer_name: 'Pedro Costa', amount: 320.00, split_count: 6, date: '2024-12-13', status: 'completed' }
+      ];
+
+      setRestaurantData(mockRestaurantData);
+      setMenuItems(mockMenuItems);
+      setRecentTransactions(mockTransactions);
+    } catch (error) {
+      console.error('Erro ao carregar dados do restaurante:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR');
+  };
 
   if (loading) {
     return (
@@ -156,47 +106,30 @@ export default function B2BRestaurantDashboard({ partnerId }: RestaurantDashboar
     );
   }
 
-  if (!restaurant) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Restaurante não encontrado</h2>
-          <p className="text-gray-600">O restaurante solicitado não foi encontrado ou não está ativo.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
-              <Building2 className="h-8 w-8 text-blue-600" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{restaurant.name}</h1>
-                <p className="text-sm text-gray-500">Parceiro RachaAI</p>
-              </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Dashboard do Restaurante
+              </h1>
+              <p className="text-gray-600 mt-1">
+                {restaurantData?.name} - Parceiro RachaAI
+              </p>
             </div>
-            <div className="flex items-center space-x-3">
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                restaurant.status === 'active' 
+            <div className="flex items-center space-x-4">
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                restaurantData?.partnership_status === 'active' 
                   ? 'bg-green-100 text-green-800' 
-                  : restaurant.status === 'pending'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-red-100 text-red-800'
+                  : 'bg-yellow-100 text-yellow-800'
               }`}>
-                {restaurant.status === 'active' ? 'Ativo' : 
-                 restaurant.status === 'pending' ? 'Pendente' : 'Suspenso'}
+                {restaurantData?.partnership_status === 'active' ? 'Ativo' : 'Pendente'}
               </span>
-              <button
-                onClick={() => setShowSettingsModal(true)}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <Settings className="h-5 w-5" />
+              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                Configurações
               </button>
             </div>
           </div>
@@ -208,28 +141,23 @@ export default function B2BRestaurantDashboard({ partnerId }: RestaurantDashboar
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             {[
-              { id: 'overview', label: 'Visão Geral', icon: BarChart3 },
-              { id: 'menu', label: 'Cardápio', icon: Menu },
-              { id: 'bills', label: 'Contas', icon: Receipt },
-              { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-              { id: 'customers', label: 'Clientes', icon: Users }
-            ].map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
-                    activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
+              { id: 'overview', label: 'Visão Geral' },
+              { id: 'menu', label: 'Cardápio' },
+              { id: 'transactions', label: 'Transações' },
+              { id: 'analytics', label: 'Analytics' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </nav>
         </div>
       </div>
@@ -238,17 +166,21 @@ export default function B2BRestaurantDashboard({ partnerId }: RestaurantDashboar
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <DollarSign className="h-8 w-8 text-green-600" />
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                      </svg>
+                    </div>
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-500">Receita Mensal</p>
                     <p className="text-2xl font-semibold text-gray-900">
-                      R$ {restaurant.monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {formatCurrency(restaurantData?.monthly_revenue || 0)}
                     </p>
                   </div>
                 </div>
@@ -257,24 +189,16 @@ export default function B2BRestaurantDashboard({ partnerId }: RestaurantDashboar
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <Users className="h-8 w-8 text-blue-600" />
+                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                    </div>
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-500">Clientes</p>
-                    <p className="text-2xl font-semibold text-gray-900">{restaurant.customerCount}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Receipt className="h-8 w-8 text-purple-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Ticket Médio</p>
                     <p className="text-2xl font-semibold text-gray-900">
-                      R$ {restaurant.averageBill.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {restaurantData?.customer_count.toLocaleString('pt-BR')}
                     </p>
                   </div>
                 </div>
@@ -283,12 +207,34 @@ export default function B2BRestaurantDashboard({ partnerId }: RestaurantDashboar
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <TrendingUp className="h-8 w-8 text-orange-600" />
+                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Transações</p>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {restaurantData?.total_transactions.toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                      </svg>
+                    </div>
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-500">Comissão</p>
                     <p className="text-2xl font-semibold text-gray-900">
-                      {(restaurant.revenueShare * 100).toFixed(1)}%
+                      {(restaurantData?.revenue_share || 0) * 100}%
                     </p>
                   </div>
                 </div>
@@ -302,32 +248,29 @@ export default function B2BRestaurantDashboard({ partnerId }: RestaurantDashboar
               </div>
               <div className="p-6">
                 <div className="space-y-4">
-                  {recentBills.map((bill) => (
-                    <div key={bill.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  {recentTransactions.slice(0, 5).map((transaction) => (
+                    <div key={transaction.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-4">
-                        <div className="flex-shrink-0">
-                          <Receipt className="h-6 w-6 text-gray-400" />
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{bill.customerName}</p>
+                          <p className="font-medium text-gray-900">{transaction.customer_name}</p>
                           <p className="text-sm text-gray-500">
-                            R$ {bill.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} • {bill.participants} pessoas
+                            {transaction.split_count} pessoas • {formatDate(transaction.date)}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          bill.status === 'completed' 
+                      <div className="text-right">
+                        <p className="font-medium text-gray-900">{formatCurrency(transaction.amount)}</p>
+                        <span className={`text-sm px-2 py-1 rounded-full ${
+                          transaction.status === 'completed' 
                             ? 'bg-green-100 text-green-800' 
-                            : bill.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
                         }`}>
-                          {bill.status === 'completed' ? 'Concluído' : 
-                           bill.status === 'pending' ? 'Pendente' : 'Cancelado'}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {new Date(bill.createdAt).toLocaleDateString('pt-BR')}
+                          {transaction.status === 'completed' ? 'Concluído' : 'Pendente'}
                         </span>
                       </div>
                     </div>
@@ -342,251 +285,153 @@ export default function B2BRestaurantDashboard({ partnerId }: RestaurantDashboar
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-900">Gerenciar Cardápio</h2>
-              <button
-                onClick={() => setShowMenuModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Adicionar Item</span>
+              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                Adicionar Item
               </button>
             </div>
 
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Itens do Cardápio</h3>
-              </div>
-              <div className="divide-y divide-gray-200">
-                {menuItems.map((item) => (
-                  <div key={item.id} className="px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-shrink-0">
-                        <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                          <Menu className="h-6 w-6 text-gray-400" />
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6">
+                <div className="space-y-4">
+                  {menuItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{item.name}</p>
+                          <p className="text-sm text-gray-500">{item.description}</p>
+                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                            {item.category}
+                          </span>
                         </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{item.name}</p>
-                        <p className="text-sm text-gray-500">{item.description}</p>
-                        <p className="text-xs text-gray-400">{item.category}</p>
+                      <div className="flex items-center space-x-4">
+                        <p className="font-medium text-gray-900">{formatCurrency(item.price)}</p>
+                        <span className={`px-2 py-1 rounded-full text-sm ${
+                          item.available 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {item.available ? 'Disponível' : 'Indisponível'}
+                        </span>
+                        <button className="text-blue-600 hover:text-blue-800">Editar</button>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <span className="text-sm font-medium text-gray-900">
-                        R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        item.available 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {item.available ? 'Disponível' : 'Indisponível'}
-                      </span>
-                      <div className="flex items-center space-x-2">
-                        <button className="p-1 text-gray-400 hover:text-gray-600">
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button className="p-1 text-gray-400 hover:text-red-600">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {activeTab === 'bills' && (
+        {activeTab === 'transactions' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">Contas Recentes</h2>
-              <div className="flex items-center space-x-4">
-                <button className="text-sm text-gray-500 hover:text-gray-700">
-                  <Download className="h-4 w-4" />
-                  Exportar
+              <h2 className="text-xl font-semibold text-gray-900">Histórico de Transações</h2>
+              <div className="flex space-x-2">
+                <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                  Exportar CSV
                 </button>
-                <button className="text-sm text-gray-500 hover:text-gray-700">
-                  <Upload className="h-4 w-4" />
-                  Importar
+                <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                  Filtrar
                 </button>
               </div>
             </div>
 
             <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Transações</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Cliente
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Valor
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Participantes
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Método
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Data
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Ações
-                      </th>
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Cliente
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Valor
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Divisão
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Data
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {recentTransactions.map((transaction) => (
+                    <tr key={transaction.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{transaction.customer_name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{formatCurrency(transaction.amount)}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{transaction.split_count} pessoas</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{formatDate(transaction.date)}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          transaction.status === 'completed' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {transaction.status === 'completed' ? 'Concluído' : 'Pendente'}
+                        </span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {recentBills.map((bill) => (
-                      <tr key={bill.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{bill.customerName}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            R$ {bill.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{bill.participants}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {bill.splitMethod === 'equal' ? 'Igual' : 'Proporcional'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            bill.status === 'completed' 
-                              ? 'bg-green-100 text-green-800' 
-                              : bill.status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {bill.status === 'completed' ? 'Concluído' : 
-                             bill.status === 'pending' ? 'Pendente' : 'Cancelado'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {new Date(bill.createdAt).toLocaleDateString('pt-BR')}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center space-x-2">
-                            <button className="text-blue-600 hover:text-blue-900">
-                              <Eye className="h-4 w-4" />
-                            </button>
-                            <button className="text-gray-600 hover:text-gray-900">
-                              <Edit className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
 
         {activeTab === 'analytics' && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900">Analytics do Negócio</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Analytics e Insights</h2>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Receita por Período</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Performance por Período</h3>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Este mês</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      R$ {restaurant.monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </span>
+                    <span className="text-sm text-gray-600">Esta semana</span>
+                    <span className="font-medium">{formatCurrency(3240.50)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Mês anterior</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      R$ {(restaurant.monthlyRevenue * 0.95).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </span>
+                    <span className="text-sm text-gray-600">Mês passado</span>
+                    <span className="font-medium">{formatCurrency(15420.50)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Crescimento</span>
-                    <span className="text-sm font-medium text-green-600">+5.3%</span>
+                    <span className="text-sm text-gray-600">Crescimento</span>
+                    <span className="text-green-600 font-medium">+12.5%</span>
                   </div>
                 </div>
               </div>
 
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Métricas de Clientes</h3>
-                <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Itens Mais Populares</h3>
+                <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Total de clientes</span>
-                    <span className="text-sm font-medium text-gray-900">{restaurant.customerCount}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Novos este mês</span>
-                    <span className="text-sm font-medium text-gray-900">23</span>
+                    <span className="text-sm text-gray-600">Feijoada Completa</span>
+                    <span className="font-medium">45 vendas</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Taxa de retenção</span>
-                    <span className="text-sm font-medium text-green-600">87%</span>
+                    <span className="text-sm text-gray-600">Picanha na Brasa</span>
+                    <span className="font-medium">38 vendas</span>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'customers' && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900">Gerenciamento de Clientes</h2>
-            
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Clientes Frequentes</h3>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-blue-600">JS</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">João Silva</p>
-                        <p className="text-sm text-gray-500">5 visitas este mês</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">R$ 450,00</p>
-                      <p className="text-sm text-gray-500">Total gasto</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-green-600">MS</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Maria Santos</p>
-                        <p className="text-sm text-gray-500">3 visitas este mês</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">R$ 280,00</p>
-                      <p className="text-sm text-gray-500">Total gasto</p>
-                    </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Caipirinha</span>
+                    <span className="font-medium">67 vendas</span>
                   </div>
                 </div>
               </div>
@@ -594,149 +439,8 @@ export default function B2BRestaurantDashboard({ partnerId }: RestaurantDashboar
           </div>
         )}
       </div>
-
-      {/* Menu Modal */}
-      {showMenuModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Adicionar Item ao Cardápio</h3>
-              <form className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Nome do Item</label>
-                  <input
-                    type="text"
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Ex: Feijoada Completa"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Descrição</label>
-                  <textarea
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    rows={3}
-                    placeholder="Descrição detalhada do item..."
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Preço</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="0,00"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Categoria</label>
-                    <select className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                      <option>Prato Principal</option>
-                      <option>Entrada</option>
-                      <option>Sobremesa</option>
-                      <option>Bebidas</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="available"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    defaultChecked
-                  />
-                  <label htmlFor="available" className="ml-2 block text-sm text-gray-900">
-                    Disponível
-                  </label>
-                </div>
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowMenuModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                  >
-                    Adicionar
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Settings Modal */}
-      {showSettingsModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Configurações do Restaurante</h3>
-              <form className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Nome do Restaurante</label>
-                  <input
-                    type="text"
-                    defaultValue={restaurant.name}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">CNPJ</label>
-                  <input
-                    type="text"
-                    defaultValue={restaurant.cnpj}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Endereço</label>
-                  <input
-                    type="text"
-                    defaultValue={restaurant.address}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Telefone</label>
-                  <input
-                    type="text"
-                    defaultValue={restaurant.phone}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    defaultValue={restaurant.email}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowSettingsModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                  >
-                    Salvar
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
-} 
+};
+
+export default B2BRestaurantDashboard; 

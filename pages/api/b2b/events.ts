@@ -9,47 +9,62 @@ const supabase = createClient(
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
-      const { organizerId, eventId } = req.query;
+      const { event_id } = req.query;
 
-      if (!organizerId) {
-        return res.status(400).json({ error: 'Organizer ID is required' });
-      }
-
-      if (eventId) {
-        // Get specific event with details
-        const { data: event, error: eventError } = await supabase
-          .from('b2b_events')
-          .select(`
-            *,
-            participants:b2b_event_participants(*),
-            expenses:b2b_event_expenses(*)
-          `)
-          .eq('id', eventId)
-          .eq('organizer_id', organizerId)
-          .single();
-
-        if (eventError) {
-          return res.status(404).json({ error: 'Event not found' });
-        }
-
-        return res.status(200).json({ event });
-      } else {
-        // Get all events for organizer
-        const { data: events, error: eventsError } = await supabase
+      if (event_id) {
+        // Get specific event data
+        const { data: event, error } = await supabase
           .from('b2b_events')
           .select('*')
-          .eq('organizer_id', organizerId)
-          .order('created_at', { ascending: false });
+          .eq('id', event_id)
+          .single();
 
-        if (eventsError) {
-          return res.status(500).json({ error: 'Failed to fetch events' });
+        if (error) {
+          return res.status(404).json({ error: 'Evento não encontrado' });
         }
 
-        return res.status(200).json({ events });
+        // Get participants for this event
+        const { data: participants, error: participantsError } = await supabase
+          .from('b2b_event_participants')
+          .select('*')
+          .eq('event_id', event_id);
+
+        if (participantsError) {
+          return res.status(500).json({ error: 'Erro ao buscar participantes' });
+        }
+
+        // Get expenses for this event
+        const { data: expenses, error: expensesError } = await supabase
+          .from('b2b_event_expenses')
+          .select('*')
+          .eq('event_id', event_id)
+          .order('created_at', { ascending: false });
+
+        if (expensesError) {
+          return res.status(500).json({ error: 'Erro ao buscar despesas' });
+        }
+
+        return res.status(200).json({
+          event,
+          participants,
+          expenses
+        });
+      } else {
+        // Get all events for the authenticated user
+        const { data: events, error } = await supabase
+          .from('b2b_events')
+          .select('*')
+          .order('date', { ascending: false });
+
+        if (error) {
+          return res.status(500).json({ error: 'Erro ao buscar eventos' });
+        }
+
+        return res.status(200).json(events);
       }
     } catch (error) {
-      console.error('B2B Events API Error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Erro na API de eventos:', error);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
     }
   }
 
@@ -59,62 +74,238 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       switch (action) {
         case 'create_event':
-          const { data: eventCreate, error: eventCreateError } = await supabase
-            .from('b2b_events')
-            .insert(data)
-            .select();
+          const { name, description, date, location, organizer_name, total_budget } = data;
 
-          if (eventCreateError) {
-            return res.status(500).json({ error: 'Failed to create event' });
+          if (!name || !date || !location || !organizer_name) {
+            return res.status(400).json({ error: 'Campos obrigatórios não preenchidos' });
           }
 
-          return res.status(200).json({ event: eventCreate[0] });
+          const { data: event, error: eventError } = await supabase
+            .from('b2b_events')
+            .insert({
+              name,
+              description,
+              date,
+              location,
+              organizer_name,
+              status: 'upcoming',
+              participant_count: 0,
+              total_budget: total_budget || 0,
+              expenses_count: 0
+            })
+            .select()
+            .single();
+
+          if (eventError) {
+            return res.status(500).json({ error: 'Erro ao criar evento' });
+          }
+
+          return res.status(201).json(event);
 
         case 'add_participant':
-          const { data: participantAdd, error: participantAddError } = await supabase
-            .from('b2b_event_participants')
-            .insert(data)
-            .select();
+          const { event_id, name, email, phone } = data;
 
-          if (participantAddError) {
-            return res.status(500).json({ error: 'Failed to add participant' });
+          if (!event_id || !name || !email) {
+            return res.status(400).json({ error: 'Campos obrigatórios não preenchidos' });
           }
 
-          return res.status(200).json({ participant: participantAdd[0] });
+          const { data: participant, error: participantError } = await supabase
+            .from('b2b_event_participants')
+            .insert({
+              event_id,
+              name,
+              email,
+              phone,
+              status: 'pending',
+              expenses_paid: 0,
+              expenses_owed: 0
+            })
+            .select()
+            .single();
+
+          if (participantError) {
+            return res.status(500).json({ error: 'Erro ao adicionar participante' });
+          }
+
+          return res.status(201).json(participant);
 
         case 'add_expense':
-          const { data: expenseAdd, error: expenseAddError } = await supabase
+          const { event_id: expenseEventId, description, amount, paid_by, split_among, category } = data;
+
+          if (!expenseEventId || !description || !amount || !paid_by) {
+            return res.status(400).json({ error: 'Campos obrigatórios não preenchidos' });
+          }
+
+          const { data: expense, error: expenseError } = await supabase
             .from('b2b_event_expenses')
-            .insert(data)
-            .select();
+            .insert({
+              event_id: expenseEventId,
+              description,
+              amount,
+              paid_by,
+              split_among: split_among || [],
+              category: category || 'outros',
+              status: 'pending'
+            })
+            .select()
+            .single();
 
-          if (expenseAddError) {
-            return res.status(500).json({ error: 'Failed to add expense' });
+          if (expenseError) {
+            return res.status(500).json({ error: 'Erro ao adicionar despesa' });
           }
 
-          return res.status(200).json({ expense: expenseAdd[0] });
-
-        case 'update_event':
-          const { data: eventUpdate, error: eventUpdateError } = await supabase
-            .from('b2b_events')
-            .update(data)
-            .eq('id', data.id)
-            .select();
-
-          if (eventUpdateError) {
-            return res.status(500).json({ error: 'Failed to update event' });
-          }
-
-          return res.status(200).json({ event: eventUpdate[0] });
+          return res.status(201).json(expense);
 
         default:
-          return res.status(400).json({ error: 'Invalid action' });
+          return res.status(400).json({ error: 'Ação inválida' });
       }
     } catch (error) {
-      console.error('B2B Events API Error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Erro na API de eventos:', error);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
     }
   }
 
-  return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method === 'PUT') {
+    try {
+      const { action, data } = req.body;
+
+      switch (action) {
+        case 'update_event':
+          const { event_id, updateData } = data;
+
+          if (!event_id) {
+            return res.status(400).json({ error: 'ID do evento é obrigatório' });
+          }
+
+          const { data: event, error: eventError } = await supabase
+            .from('b2b_events')
+            .update(updateData)
+            .eq('id', event_id)
+            .select()
+            .single();
+
+          if (eventError) {
+            return res.status(500).json({ error: 'Erro ao atualizar evento' });
+          }
+
+          return res.status(200).json(event);
+
+        case 'update_participant':
+          const { participant_id, participantUpdateData } = data;
+
+          if (!participant_id) {
+            return res.status(400).json({ error: 'ID do participante é obrigatório' });
+          }
+
+          const { data: participant, error: participantError } = await supabase
+            .from('b2b_event_participants')
+            .update(participantUpdateData)
+            .eq('id', participant_id)
+            .select()
+            .single();
+
+          if (participantError) {
+            return res.status(500).json({ error: 'Erro ao atualizar participante' });
+          }
+
+          return res.status(200).json(participant);
+
+        case 'update_expense':
+          const { expense_id, expenseUpdateData } = data;
+
+          if (!expense_id) {
+            return res.status(400).json({ error: 'ID da despesa é obrigatório' });
+          }
+
+          const { data: expense, error: expenseError } = await supabase
+            .from('b2b_event_expenses')
+            .update(expenseUpdateData)
+            .eq('id', expense_id)
+            .select()
+            .single();
+
+          if (expenseError) {
+            return res.status(500).json({ error: 'Erro ao atualizar despesa' });
+          }
+
+          return res.status(200).json(expense);
+
+        default:
+          return res.status(400).json({ error: 'Ação inválida' });
+      }
+    } catch (error) {
+      console.error('Erro na API de eventos:', error);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  }
+
+  if (req.method === 'DELETE') {
+    try {
+      const { action, data } = req.body;
+
+      switch (action) {
+        case 'delete_event':
+          const { event_id } = data;
+
+          if (!event_id) {
+            return res.status(400).json({ error: 'ID do evento é obrigatório' });
+          }
+
+          const { error } = await supabase
+            .from('b2b_events')
+            .delete()
+            .eq('id', event_id);
+
+          if (error) {
+            return res.status(500).json({ error: 'Erro ao deletar evento' });
+          }
+
+          return res.status(200).json({ message: 'Evento deletado com sucesso' });
+
+        case 'remove_participant':
+          const { participant_id } = data;
+
+          if (!participant_id) {
+            return res.status(400).json({ error: 'ID do participante é obrigatório' });
+          }
+
+          const { error: participantError } = await supabase
+            .from('b2b_event_participants')
+            .delete()
+            .eq('id', participant_id);
+
+          if (participantError) {
+            return res.status(500).json({ error: 'Erro ao remover participante' });
+          }
+
+          return res.status(200).json({ message: 'Participante removido com sucesso' });
+
+        case 'delete_expense':
+          const { expense_id } = data;
+
+          if (!expense_id) {
+            return res.status(400).json({ error: 'ID da despesa é obrigatório' });
+          }
+
+          const { error: expenseError } = await supabase
+            .from('b2b_event_expenses')
+            .delete()
+            .eq('id', expense_id);
+
+          if (expenseError) {
+            return res.status(500).json({ error: 'Erro ao deletar despesa' });
+          }
+
+          return res.status(200).json({ message: 'Despesa deletada com sucesso' });
+
+        default:
+          return res.status(400).json({ error: 'Ação inválida' });
+      }
+    } catch (error) {
+      console.error('Erro na API de eventos:', error);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  }
+
+  return res.status(405).json({ error: 'Método não permitido' });
 } 

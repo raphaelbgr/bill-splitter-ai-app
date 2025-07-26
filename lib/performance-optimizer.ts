@@ -93,6 +93,8 @@ export class PerformanceOptimizer {
         ttl: async () => -1,
         expire: async () => 1,
         incr: async () => 1,
+        exists: async () => 0,
+        set: async () => 'OK',
         healthCheck: async () => false
       } as any;
     } else {
@@ -267,19 +269,26 @@ export class PerformanceOptimizer {
       
       for (const query of commonQueries) {
         const cacheKey = `claude:${region}:common:${this.hashString(query)}`;
-        const exists = await this.redis.exists(cacheKey);
         
-        if (!exists) {
-          // Generate response in background
-          setImmediate(async () => {
-            try {
-              // This would typically call Claude API
-              const response = { content: 'Cached response', cached: true };
-              await this.redis.setex(cacheKey, 1800, JSON.stringify(response)); // 30 min
-            } catch (error) {
-              console.log('Cache warming failed for query:', query);
-            }
-          });
+        try {
+          const exists = await this.redis.exists(cacheKey);
+          
+          if (!exists) {
+            // Generate response in background
+            setImmediate(async () => {
+              try {
+                // This would typically call Claude API
+                const response = { content: 'Cached response', cached: true };
+                await this.redis.setex(cacheKey, 1800, JSON.stringify(response)); // 30 min
+              } catch (error) {
+                console.log('Cache warming failed for query:', query);
+              }
+            });
+          }
+        } catch (redisError) {
+          // Skip cache warming if Redis is not available
+          console.log('Redis not available, skipping cache warming');
+          break;
         }
       }
     } catch (error) {

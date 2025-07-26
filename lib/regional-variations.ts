@@ -434,15 +434,17 @@ export class RegionalVariationProcessor {
     for (const region of regionsToCheck) {
       const regionalExpressions = this.variationsDB[region];
       
-      for (const [term, expression] of Object.entries(regionalExpressions)) {
-        if (normalizedText.includes(term.toLowerCase())) {
-          variations.push({
-            region: region as BrazilianRegion,
-            originalTerm: term,
-            standardTerm: expression.standardTerm,
-            confidence: this.calculateVariationConfidence(term, region, userRegion),
-            context: expression.meaning
-          });
+      if (regionalExpressions && typeof regionalExpressions === 'object') {
+        for (const [term, expression] of Object.entries(regionalExpressions)) {
+          if (normalizedText.includes(term.toLowerCase())) {
+            variations.push({
+              region: region as BrazilianRegion,
+              originalTerm: term,
+              standardTerm: expression.standardTerm,
+              confidence: this.calculateVariationConfidence(term, region, userRegion),
+              context: expression.meaning
+            });
+          }
         }
       }
     }

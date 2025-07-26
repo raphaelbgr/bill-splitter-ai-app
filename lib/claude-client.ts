@@ -253,25 +253,17 @@ FORMATO DE RESPOSTA:
         return testResponse;
       }
 
-      // Skip budget check for testing
-      console.log('Skipping budget check for testing');
-      // await this.checkDailyBudget(context.userId);
+      // Check daily budget
+      await this.checkDailyBudget(context.userId);
 
-      // Skip model selection and API call for testing
-      console.log('Skipping model selection and API call for testing');
-      /*
-      // Select optimal model based on complexity and optimizations
-      const selectedModel = await this.selectOptimalModel(message, context, {
-        peakHour: peakHourOptimization.useFasterModel,
-        mobile: mobileOptimization.useFasterModel,
-        cost: costOptimization.useCheaperModel
-      });
+      // Select optimal model based on complexity
+      const selectedModel = await this.selectOptimalModel(message, context);
 
       // Enhance message with Brazilian context
       const enhancedPrompt = await this.enhanceWithBrazilianContext(message, context);
 
-      // Prepare conversation history (optimized for mobile if needed)
-      const conversationHistory = await this.prepareConversationHistory(context, mobileOptimization.reduceContextLength);
+      // Prepare conversation history
+      const conversationHistory = await this.prepareConversationHistory(context);
 
       // Make Claude API call
       const response = await this.callClaude(
@@ -308,20 +300,6 @@ FORMATO DE RESPOSTA:
       await this.cacheResponse(message, context, claudeResponse);
 
       return claudeResponse;
-      */
-      
-      // Return test response since all other logic is bypassed
-      console.log('All logic bypassed, returning test response');
-      const testResponse: ClaudeResponse = {
-        content: this.generateTestResponse(message),
-        modelUsed: 'claude-3-haiku-20240307',
-        tokensUsed: { input: 0, output: 0, total: 0 },
-        costBRL: 0,
-        processingTimeMs: Date.now() - startTime,
-        confidence: 0.8,
-        cached: false
-      };
-      return testResponse;
 
     } catch (error) {
       console.error('Claude processing error:', error);
@@ -337,30 +315,8 @@ FORMATO DE RESPOSTA:
     message: string,
     context: ConversationContext
   ): Promise<ClaudeModel> {
-    const complexity = this.analyzeComplexity(message, context);
-
-    // Haiku - 70% of cases (simple confirmations, basic calculations)
-    if (
-      complexity <= 3 ||
-      this.isSimpleConfirmation(message) ||
-      this.isBasicCalculation(message) ||
-      this.isGreeting(message)
-    ) {
-      return 'claude-3-haiku-20240307';
-    }
-
-    // Opus - 5% of cases (highly complex scenarios, failed Sonnet attempts)
-    if (
-      complexity >= 8 ||
-      this.isHighlyComplex(message) ||
-      this.isCorporateExpense(message) ||
-      context.messageHistory.some(m => m.modelUsed === 'claude-3-sonnet-20240229' && m.content.includes('não entendi'))
-    ) {
-      return 'claude-3-opus-20240229';
-    }
-
-    // Sonnet - 25% of cases (moderate complexity, ambiguous context)
-    return 'claude-3-sonnet-20240229';
+    // For now, only use the working model to avoid API errors
+    return 'claude-3-haiku-20240307';
   }
 
   /**
@@ -766,16 +722,42 @@ FORMATO DE RESPOSTA:
     if (!this.claude) {
       throw new Error('Anthropic client not initialized. API key not set.');
     }
-    return await this.claude.messages.create({
-      model,
-      max_tokens: parseInt(process.env.CLAUDE_MAX_TOKENS || '4096'),
-      temperature: parseFloat(process.env.CLAUDE_TEMPERATURE || '0.7'),
-      system: this.BRAZILIAN_SYSTEM_PROMPT,
-      messages: [
-        ...history,
-        { role: 'user', content: message }
-      ]
-    });
+    
+    try {
+      console.log('Calling Claude API with model:', model);
+      console.log('Message length:', message.length);
+      console.log('History length:', history.length);
+      
+      const response = await this.claude.messages.create({
+        model,
+        max_tokens: parseInt(process.env.CLAUDE_MAX_TOKENS || '4096'),
+        temperature: parseFloat(process.env.CLAUDE_TEMPERATURE || '0.7'),
+        system: this.BRAZILIAN_SYSTEM_PROMPT,
+        messages: [
+          ...history,
+          { role: 'user', content: message }
+        ]
+      });
+      
+      console.log('Claude API response received');
+      return response;
+    } catch (error) {
+      console.error('Claude API call failed:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('API key') || error.message.includes('authentication')) {
+          throw new Error('Invalid API key. Please check your ANTHROPIC_API_KEY environment variable.');
+        }
+        if (error.message.includes('rate limit') || error.message.includes('quota')) {
+          throw new Error('Rate limit exceeded. Please try again later.');
+        }
+        if (error.message.includes('timeout')) {
+          throw new Error('Request timeout. Please try again.');
+        }
+      }
+      
+      throw new Error(`Claude API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   private async checkCostAlerts(): Promise<void> {

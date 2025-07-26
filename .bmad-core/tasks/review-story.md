@@ -4,9 +4,10 @@ When a developer agent marks a story as "Ready for Review", perform a comprehens
 
 ## Prerequisites
 
-- Story status must be "Review"
+- Story status must be "Ready for Review"
 - Developer has completed all tasks and updated the File List
 - All automated tests are passing
+- 100% test coverage required for all new code
 
 ## Review Process
 
@@ -65,6 +66,9 @@ When a developer agent marks a story as "Ready for Review", perform a comprehens
    - Verify integration tests (if required) are comprehensive
    - Check that test assertions are meaningful
    - Look for missing test scenarios
+   - **CRITICAL**: Verify 100% test coverage for all new code
+   - **CRITICAL**: Ensure all external dependencies are properly mocked
+   - **CRITICAL**: Run comprehensive test suite and validate 100% pass rate
 
 9. **Documentation and Comments**
    - Verify code is self-documenting where possible
@@ -116,6 +120,12 @@ After review and any refactoring, append your results to the story file in the Q
 
 ### Final Status
 [✓ Approved - Ready for Done] / [✗ Changes Required - See unchecked items above]
+
+### Test Validation Results
+- **Test Coverage**: [X]% (must be 100% for new code)
+- **All Tests Pass**: [✓/✗] (must be 100% pass rate)
+- **External Dependencies Mocked**: [✓/✗]
+- **No Regressions**: [✓/✗]
 ```
 
 ## Key Principles
@@ -143,3 +153,6 @@ After review:
 1. If all items are checked and approved: Update story status to "Done"
 2. If unchecked items remain: Keep status as "Review" for dev to address
 3. Always provide constructive feedback and explanations for learning
+4. **CRITICAL**: After successful validation, mark story completion with "X" in all tracking files
+5. **CRITICAL**: Reactivate the previous Dev to proceed with the next task/story/sprint if applicable
+6. **CRITICAL**: Reflect completion status across sprints/epics/stories using consistent checkmarks

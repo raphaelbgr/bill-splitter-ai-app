@@ -33,7 +33,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
+      urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/,
       handler: 'CacheFirst',
       options: {
         cacheName: 'images-cache',
@@ -44,7 +44,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      urlPattern: /\.(?:js|css)$/,
+      urlPattern: /\.(?:js|css|woff|woff2|ttf)$/,
       handler: 'StaleWhileRevalidate',
       options: {
         cacheName: 'static-resources-cache',
@@ -54,7 +54,41 @@ const withPWA = require('next-pwa')({
         },
       },
     },
+    {
+      urlPattern: /^\/api\/ai\/chat$/,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'chat-api-cache',
+        expiration: {
+          maxEntries: 50,
+          maxAgeSeconds: 60 * 5, // 5 minutes
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+      },
+    },
+    {
+      urlPattern: /^\/api\/auth\/.*$/,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'auth-api-cache',
+        expiration: {
+          maxEntries: 20,
+          maxAgeSeconds: 60 * 60, // 1 hour
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+      },
+    },
   ],
+  // Brazilian network optimization
+  buildExcludes: [/middleware-manifest\.json$/],
+  // Offline fallback
+  fallbacks: {
+    document: '/offline',
+  },
 });
 
 /** @type {import('next').NextConfig} */

@@ -1,11 +1,11 @@
 {
-  "name": "RachaAI - Divisor de Contas Inteligente",
+  "name": "RachaAI - Divisão Inteligente de Contas",
   "short_name": "RachaAI",
-  "description": "Divisor de contas inteligente com IA para brasileiros",
+  "description": "Divisão inteligente de contas com IA brasileira, conformidade LGPD e interface intuitiva",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#8b5cf6",
+  "background_color": "#0f172a",
+  "theme_color": "#581c87",
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "pt-BR",
@@ -61,56 +61,46 @@
       "purpose": "maskable any"
     }
   ],
+  "shortcuts": [
+    {
+      "name": "Nova Divisão",
+      "short_name": "Dividir",
+      "description": "Criar nova divisão de contas",
+      "url": "/test",
+      "icons": [
+        {
+          "src": "/icons/shortcut-divide.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Meus Grupos",
+      "short_name": "Grupos",
+      "description": "Ver grupos e divisões",
+      "url": "/group-test",
+      "icons": [
+        {
+          "src": "/icons/shortcut-groups.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
   "screenshots": [
+    {
+      "src": "/screenshots/desktop-1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Interface conversacional do RachaAI"
+    },
     {
       "src": "/screenshots/mobile-1.png",
       "sizes": "390x844",
       "type": "image/png",
-      "form_factor": "narrow"
-    },
-    {
-      "src": "/screenshots/mobile-2.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Nova Conversa",
-      "short_name": "Conversa",
-      "description": "Iniciar nova conversa para dividir contas",
-      "url": "/conversation-test",
-      "icons": [
-        {
-          "src": "/icons/chat-icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Grupos",
-      "short_name": "Grupos",
-      "description": "Gerenciar grupos de divisão",
-      "url": "/group-test",
-      "icons": [
-        {
-          "src": "/icons/groups-icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Pagamentos",
-      "short_name": "Pagamentos",
-      "description": "Ver e gerenciar pagamentos",
-      "url": "/payment-test",
-      "icons": [
-        {
-          "src": "/icons/payment-icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
+      "form_factor": "narrow",
+      "label": "Divisão de contas no mobile"
     }
   ],
   "related_applications": [],

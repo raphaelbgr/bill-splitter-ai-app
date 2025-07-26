@@ -14,7 +14,7 @@ This folder contains all stories that have been marked as completed (✅ COMPLET
 - **story-05-1-basic-conversation-interface-design.md** - Basic conversation interface design
 - **story-05-2-group-management-interface-design.md** - Group management interface design
 
-### Advanced Features (Stories 6-11)
+### Advanced Features (Stories 6-14)
 - **story-06-memory-system-context-retention.md** - Memory system and context retention
 - **story-07-implementation-summary.md** - Implementation summary
 - **story-07-portuguese-optimization-cultural-contexts.md** - Portuguese optimization and cultural contexts
@@ -24,6 +24,12 @@ This folder contains all stories that have been marked as completed (✅ COMPLET
 - **story-10-performance-optimization-caching.md** - Performance optimization and caching
 - **story-10-implementation-summary.md** - Story 10 implementation summary
 - **story-11-error-handling-edge-cases.md** - Error handling and edge cases
+- **story-12-analytics-user-feedback-systems.md** - Analytics and user feedback systems
+- **story-13-advanced-analytics-insights.md** - Advanced analytics and insights
+- **story-14-premium-features-monetization.md** - Premium features and monetization
+
+### B2B Features (Story 15)
+- **story-15-b2b-features-partnerships.md** - B2B features and partnerships
 
 ## Completion Criteria
 
@@ -32,6 +38,7 @@ All stories in this folder have been marked with ✅ COMPLETED status, indicatin
 - Code has been implemented and tested
 - Documentation is complete
 - Code review has been completed and approved
+- Brazilian market requirements have been validated
 
 ## Organization Notes
 

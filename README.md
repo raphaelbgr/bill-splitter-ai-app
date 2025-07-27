@@ -111,6 +111,22 @@ ANTHROPIC_API_KEY=sk-ant-api03-your_key_here
 
 **Note:** Without the API key, the chat will work in test mode with limited responses.
 
+### Cost Optimization
+
+The AI chat is now optimized for cost efficiency:
+
+```bash
+# Check current pricing
+npm run cost:calculator
+```
+
+**Current Costs:**
+- **Simple queries**: ~R$ 0.02 per request
+- **Complex calculations**: ~R$ 0.03-0.05 per request
+- **Daily budget**: R$ 100 (configurable)
+
+The system automatically selects the most cost-effective model for each request while maintaining quality.
+
 ### Environment Variables
 
 ```bash

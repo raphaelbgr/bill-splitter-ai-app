@@ -26,7 +26,8 @@
     "apply:simple-rls-direct": "node scripts/apply-simple-rls-direct.js",
     "generate:pwa-icons": "node scripts/generate-pwa-icons.js",
     "pwa:setup": "npm run generate:pwa-icons",
-    "setup:api-key": "node scripts/setup-api-key.js"
+    "setup:api-key": "node scripts/setup-api-key.js",
+    "cost:calculator": "node scripts/cost-calculator.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.3",

@@ -81,13 +81,13 @@ export class RachaAIClaudeClient {
   private regionalVariationProcessor: RegionalVariationProcessor;
   private regionalPortugueseProcessor: RegionalPortugueseProcessor;
 
-  // Model pricing in USD (per 1K tokens)
+  // Model pricing in USD (per 1K tokens) - Updated July 2024
   private readonly MODEL_PRICING = {
     'claude-3-haiku-20240307': { input: 0.25, output: 1.25 },
     'claude-3-sonnet-20240229': { input: 3.0, output: 15.0 },
     'claude-3-opus-20240229': { input: 15.0, output: 75.0 },
-    'claude-3-5-sonnet-20241022': { input: 3.0, output: 15.0 },
-    'claude-3-5-haiku-20241022': { input: 0.25, output: 1.25 }
+    'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015 },
+    'claude-3-5-haiku-20241022': { input: 0.00025, output: 0.00125 }
   } as const;
 
   // Brazilian system prompt base
@@ -622,9 +622,9 @@ FORMATO DE RESPOSTA:
       cachedAt: new Date().toISOString()
     };
 
-    // Cache for 2 hours for expensive models, 1 hour for Haiku
+    // Cache for 2 hours for expensive models, 1 hour for Sonnet, 30 min for Haiku
     const ttl = response.modelUsed === 'claude-3-opus-20240229' ? 7200 : 
-                response.modelUsed === 'claude-3-sonnet-20240229' ? 3600 : 1800;
+                response.modelUsed === 'claude-3-5-sonnet-20241022' ? 3600 : 1800;
 
     await this.redis.setex(cacheKey, ttl, JSON.stringify(cacheData));
   }

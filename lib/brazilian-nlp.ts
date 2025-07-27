@@ -169,6 +169,198 @@ export class BrazilianNLPProcessor {
     this.culturalAnalyzer = new BrazilianCulturalContextAnalyzer();
   }
 
+  async analyzeExpense(
+    description: string,
+    amount: number,
+    context: {
+      region?: string;
+      context?: string;
+      userId?: string;
+      groupId?: string;
+    }
+  ): Promise<{
+    category: string;
+    confidence: number;
+    keywords: string[];
+    culturalFactors: string[];
+    regionalVariations: any[];
+    reason: string;
+  }> {
+    // Analyze the expense description
+    const result = await this.processText(description, context.region);
+    
+    // Determine category based on description and amount
+    const category = this.determineExpenseCategory(description, amount, context);
+    
+    // Extract keywords
+    const keywords = this.extractKeywords(description);
+    
+    // Get cultural factors
+    const culturalFactors = this.getCulturalFactors(description, context.region);
+    
+    // Get regional variations
+    const regionalVariations = this.detectRegionalVariations(description, context.region);
+    
+    // Calculate confidence
+    const confidence = this.calculateCategoryConfidence(description, amount, category);
+    
+    return {
+      category,
+      confidence,
+      keywords,
+      culturalFactors,
+      regionalVariations,
+      reason: this.generateCategoryReason(description, category, context.region),
+    };
+  }
+
+  private determineExpenseCategory(description: string, amount: number, context: any): string {
+    const normalizedDesc = description.toLowerCase();
+    
+    // Restaurant categories
+    if (normalizedDesc.includes('restaurante') || normalizedDesc.includes('japonês') || 
+        normalizedDesc.includes('pizza') || normalizedDesc.includes('hambúrguer') ||
+        normalizedDesc.includes('almoço') || normalizedDesc.includes('jantar')) {
+      return 'restaurante';
+    }
+    
+    // Transportation
+    if (normalizedDesc.includes('uber') || normalizedDesc.includes('99') || 
+        normalizedDesc.includes('taxi') || normalizedDesc.includes('transporte') ||
+        normalizedDesc.includes('ônibus') || normalizedDesc.includes('metrô')) {
+      return 'transporte';
+    }
+    
+    // Entertainment
+    if (normalizedDesc.includes('cinema') || normalizedDesc.includes('teatro') ||
+        normalizedDesc.includes('show') || normalizedDesc.includes('festa') ||
+        normalizedDesc.includes('bar') || normalizedDesc.includes('balada')) {
+      return 'entretenimento';
+    }
+    
+    // Shopping
+    if (normalizedDesc.includes('shopping') || normalizedDesc.includes('loja') ||
+        normalizedDesc.includes('roupa') || normalizedDesc.includes('sapato') ||
+        normalizedDesc.includes('compra')) {
+      return 'shopping';
+    }
+    
+    // Travel
+    if (normalizedDesc.includes('viagem') || normalizedDesc.includes('hotel') ||
+        normalizedDesc.includes('passagem') || normalizedDesc.includes('turismo')) {
+      return 'viagem';
+    }
+    
+    // Family/Home
+    if (normalizedDesc.includes('casa') || normalizedDesc.includes('família') ||
+        normalizedDesc.includes('supermercado') || normalizedDesc.includes('feira')) {
+      return 'família';
+    }
+    
+    // Default
+    return 'outros';
+  }
+
+  private extractKeywords(description: string): string[] {
+    const keywords: string[] = [];
+    const normalizedDesc = description.toLowerCase();
+    
+    // Common expense keywords
+    const commonKeywords = [
+      'restaurante', 'japonês', 'pizza', 'hambúrguer', 'almoço', 'jantar',
+      'uber', 'taxi', 'transporte', 'ônibus', 'metrô',
+      'cinema', 'teatro', 'show', 'festa', 'bar', 'balada',
+      'shopping', 'loja', 'roupa', 'sapato', 'compra',
+      'viagem', 'hotel', 'passagem', 'turismo',
+      'casa', 'família', 'supermercado', 'feira'
+    ];
+    
+    commonKeywords.forEach(keyword => {
+      if (normalizedDesc.includes(keyword)) {
+        keywords.push(keyword);
+      }
+    });
+    
+    return keywords;
+  }
+
+  private getCulturalFactors(description: string, region?: string): string[] {
+    const factors: string[] = [];
+    const normalizedDesc = description.toLowerCase();
+    
+    // Brazilian cultural factors
+    if (normalizedDesc.includes('rodízio') || normalizedDesc.includes('churrasco')) {
+      factors.push('brazilian_social_dining');
+    }
+    
+    if (normalizedDesc.includes('pix') || normalizedDesc.includes('transferência')) {
+      factors.push('brazilian_payment_preference');
+    }
+    
+    if (region === 'SP' || region === 'RJ') {
+      factors.push('urban_lifestyle');
+    } else if (region === 'RS') {
+      factors.push('gaucho_culture');
+    }
+    
+    return factors;
+  }
+
+  private calculateCategoryConfidence(description: string, amount: number, category: string): number {
+    let confidence = 0.5; // Base confidence
+    
+    // Increase confidence based on description clarity
+    const normalizedDesc = description.toLowerCase();
+    const categoryKeywords = this.getCategoryKeywords(category);
+    
+    let keywordMatches = 0;
+    categoryKeywords.forEach(keyword => {
+      if (normalizedDesc.includes(keyword)) {
+        keywordMatches++;
+      }
+    });
+    
+    confidence += (keywordMatches / categoryKeywords.length) * 0.3;
+    
+    // Adjust confidence based on amount ranges
+    if (category === 'restaurante' && amount > 50 && amount < 200) {
+      confidence += 0.1;
+    } else if (category === 'transporte' && amount > 10 && amount < 50) {
+      confidence += 0.1;
+    } else if (category === 'entretenimento' && amount > 20 && amount < 100) {
+      confidence += 0.1;
+    }
+    
+    return Math.min(confidence, 0.95);
+  }
+
+  private getCategoryKeywords(category: string): string[] {
+    const keywords: { [key: string]: string[] } = {
+      restaurante: ['restaurante', 'japonês', 'pizza', 'hambúrguer', 'almoço', 'jantar', 'rodízio'],
+      transporte: ['uber', 'taxi', 'transporte', 'ônibus', 'metrô', '99'],
+      entretenimento: ['cinema', 'teatro', 'show', 'festa', 'bar', 'balada'],
+      shopping: ['shopping', 'loja', 'roupa', 'sapato', 'compra'],
+      viagem: ['viagem', 'hotel', 'passagem', 'turismo'],
+      família: ['casa', 'família', 'supermercado', 'feira'],
+    };
+    
+    return keywords[category] || [];
+  }
+
+  private generateCategoryReason(description: string, category: string, region?: string): string {
+    const reasons: { [key: string]: string } = {
+      restaurante: 'Despesa de alimentação em restaurante',
+      transporte: 'Despesa de transporte/deslocamento',
+      entretenimento: 'Despesa de entretenimento/lazer',
+      shopping: 'Despesa de compras/shopping',
+      viagem: 'Despesa de viagem/turismo',
+      família: 'Despesa familiar/doméstica',
+      outros: 'Despesa geral',
+    };
+    
+    return reasons[category] || 'Despesa categorizada automaticamente';
+  }
+
   /**
    * Process Brazilian Portuguese text for expense parsing
    */

@@ -89,11 +89,34 @@ cp env-example.txt .env.local
 
 # Start development server
 npm run dev
+
+### Setting up Claude AI (Required for Chat)
+
+The chat functionality requires a Claude API key from Anthropic. To set it up:
+
+```bash
+# Run the interactive setup script
+npm run setup:api-key
+
+# Or manually add to .env.local:
+ANTHROPIC_API_KEY=sk-ant-api03-your_key_here
 ```
+
+**To get your API key:**
+1. Visit https://console.anthropic.com/
+2. Create an account or sign in
+3. Go to "API Keys"
+4. Create a new API key
+5. Copy the key (starts with "sk-ant-api03-")
+
+**Note:** Without the API key, the chat will work in test mode with limited responses.
 
 ### Environment Variables
 
 ```bash
+# Claude API Configuration (Required for AI chat)
+ANTHROPIC_API_KEY=sk-ant-api03-your_key_here
+
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key

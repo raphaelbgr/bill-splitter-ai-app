@@ -21,14 +21,18 @@ export default async function handler(
     // For test/dev: return usage stats
     const claudeClient = new RachaAIClaudeClient();
     const usageStats = await claudeClient.getUsageStats();
+    const hasApiKey = !!process.env.ANTHROPIC_API_KEY;
     
     return res.status(200).json({
       success: true,
       data: {
-        content: 'RachaAI está online e pronto para ajudar!',
-        modelUsed: 'claude-3-haiku-20240307',
+        content: hasApiKey 
+          ? 'RachaAI está online e pronto para ajudar! 🤖'
+          : 'RachaAI em modo de teste. Configure ANTHROPIC_API_KEY para usar IA completa.',
+        modelUsed: hasApiKey ? 'claude-3-5-sonnet-20241022' : 'test-mode',
         tokensUsed: { total: 0, input: 0, output: 0 },
-        costBRL: 0
+        costBRL: 0,
+        apiKeyConfigured: hasApiKey
       },
       usage: usageStats
     });
@@ -79,7 +83,8 @@ export default async function handler(
         modelUsed: claudeResponse.modelUsed,
         tokensUsed: claudeResponse.tokensUsed,
         costBRL: claudeResponse.costBRL,
-        cached: claudeResponse.cached
+        cached: claudeResponse.cached,
+        apiKeyConfigured: !!process.env.ANTHROPIC_API_KEY
       },
       usage: usageStats
     };

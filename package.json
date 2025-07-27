@@ -25,7 +25,8 @@
     "execute:database-setup": "node scripts/execute-database-setup.js",
     "apply:simple-rls-direct": "node scripts/apply-simple-rls-direct.js",
     "generate:pwa-icons": "node scripts/generate-pwa-icons.js",
-    "pwa:setup": "npm run generate:pwa-icons"
+    "pwa:setup": "npm run generate:pwa-icons",
+    "setup:api-key": "node scripts/setup-api-key.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.3",

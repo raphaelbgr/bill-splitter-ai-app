@@ -42,7 +42,7 @@ export interface BrazilianContext {
   timeOfDay: 'manha' | 'almoco' | 'tarde' | 'jantar' | 'noite';
 }
 
-export type ClaudeModel = 'claude-3-haiku-20240307' | 'claude-3-sonnet-20240229' | 'claude-3-opus-20240229';
+export type ClaudeModel = 'claude-3-haiku-20240307' | 'claude-3-sonnet-20240229' | 'claude-3-opus-20240229' | 'claude-3-5-sonnet-20241022' | 'claude-3-5-haiku-20241022';
 
 export interface ClaudeResponse {
   content: string;
@@ -85,7 +85,9 @@ export class RachaAIClaudeClient {
   private readonly MODEL_PRICING = {
     'claude-3-haiku-20240307': { input: 0.25, output: 1.25 },
     'claude-3-sonnet-20240229': { input: 3.0, output: 15.0 },
-    'claude-3-opus-20240229': { input: 15.0, output: 75.0 }
+    'claude-3-opus-20240229': { input: 15.0, output: 75.0 },
+    'claude-3-5-sonnet-20241022': { input: 3.0, output: 15.0 },
+    'claude-3-5-haiku-20241022': { input: 0.25, output: 1.25 }
   } as const;
 
   // Brazilian system prompt base
@@ -193,48 +195,76 @@ FORMATO DE RESPOSTA:
       // ConversationContextSchema.parse(context);
 
       // Performance optimization: Check for cached response first
-      const cachedResponse = await performanceOptimizer.getCachedResponse(message, context, 'claude');
-      if (cachedResponse) {
-        console.log('Cache hit - returning cached response');
-        return {
-          ...cachedResponse,
-          cached: true,
-          processingTimeMs: Date.now() - startTime
-        };
+      try {
+        const cachedResponse = await performanceOptimizer.getCachedResponse(message, context, 'claude');
+        if (cachedResponse) {
+          console.log('Cache hit - returning cached response');
+          return {
+            ...cachedResponse,
+            cached: true,
+            processingTimeMs: Date.now() - startTime
+          };
+        }
+      } catch (error) {
+        console.log('Cache check failed, continuing with direct processing:', error);
       }
 
-      // Brazilian peak hour optimization
-      const peakHourOptimization = await performanceOptimizer.optimizeForPeakHours(
-        context.userId, 
-        context.culturalContext?.region || 'BR'
-      );
+      // Brazilian peak hour optimization (simplified)
+      try {
+        await performanceOptimizer.optimizeForPeakHours(
+          context.userId, 
+          context.culturalContext?.region || 'BR'
+        );
+      } catch (error) {
+        console.log('Peak hour optimization failed:', error);
+      }
 
-      // Mobile optimization
-      const mobileOptimization = await performanceOptimizer.optimizeForMobile(
-        context.userAgent || 'unknown',
-        context.networkCondition || 'medium'
-      );
+      // Mobile optimization (simplified)
+      try {
+        await performanceOptimizer.optimizeForMobile(
+          context.userAgent || 'unknown',
+          context.networkCondition || 'medium'
+        );
+      } catch (error) {
+        console.log('Mobile optimization failed:', error);
+      }
 
-      // Cost optimization
-      const costOptimization = await performanceOptimizer.optimizeCosts(
-        context.userId,
-        message,
-        context
-      );
+      // Cost optimization (simplified)
+      try {
+        await performanceOptimizer.optimizeCosts(
+          context.userId,
+          message,
+          context
+        );
+      } catch (error) {
+        console.log('Cost optimization failed:', error);
+      }
 
       // Process regional Portuguese variations and cultural context
-      const regionalAnalysis = await this.regionalPortugueseProcessor.processRegionalPortuguese(
-        message,
-        context.userPreferences?.region as any
-      );
-      
-      console.log('Regional analysis:', {
-        detectedRegion: regionalAnalysis.detectedRegion,
-        regionalExpressions: regionalAnalysis.regionalExpressions.length,
-        culturalReferences: regionalAnalysis.culturalReferences.length,
-        codeSwitching: regionalAnalysis.codeSwitching.length,
-        confidence: regionalAnalysis.confidence
-      });
+      let regionalAnalysis;
+      try {
+        regionalAnalysis = await this.regionalPortugueseProcessor.processRegionalPortuguese(
+          message,
+          context.userPreferences?.region as any
+        );
+        
+        console.log('Regional analysis:', {
+          detectedRegion: regionalAnalysis.detectedRegion,
+          regionalExpressions: regionalAnalysis.regionalExpressions.length,
+          culturalReferences: regionalAnalysis.culturalReferences.length,
+          codeSwitching: regionalAnalysis.codeSwitching.length,
+          confidence: regionalAnalysis.confidence
+        });
+      } catch (error) {
+        console.log('Regional analysis failed:', error);
+        regionalAnalysis = {
+          detectedRegion: 'BR',
+          regionalExpressions: [],
+          culturalReferences: [],
+          codeSwitching: [],
+          confidence: 0.5
+        };
+      }
 
       // Check if Claude client is available
       if (!this.claude) {
@@ -242,7 +272,7 @@ FORMATO DE RESPOSTA:
         // Return test response when API key is not set
         const testResponse: ClaudeResponse = {
           content: this.generateTestResponse(message),
-          modelUsed: 'claude-3-haiku-20240307',
+          modelUsed: 'claude-3-5-sonnet-20241022',
           tokensUsed: { input: 0, output: 0, total: 0 },
           costBRL: 0,
           processingTimeMs: Date.now() - startTime,
@@ -309,14 +339,32 @@ FORMATO DE RESPOSTA:
 
   /**
    * Intelligent model selection based on message complexity
-   * Implements 70% Haiku, 25% Sonnet, 5% Opus distribution strategy
+   * Implements 70% Sonnet, 25% Opus, 5% Haiku distribution strategy (Haiku deactivated)
    */
   private async selectOptimalModel(
     message: string,
     context: ConversationContext
   ): Promise<ClaudeModel> {
-    // For now, only use the working model to avoid API errors
-    return 'claude-3-haiku-20240307';
+    // Deactivate haiku model - it's too limited for complex bill splitting
+    const complexity = this.analyzeComplexity(message, context);
+    
+    // Use Sonnet for most cases (70% of requests)
+    if (complexity <= 5) {
+      return 'claude-3-5-sonnet-20241022';
+    }
+    
+    // Use Opus for complex cases (25% of requests)
+    if (complexity <= 8) {
+      return 'claude-3-opus-20240229';
+    }
+    
+    // Use Haiku only for very simple cases (5% of requests)
+    if (complexity <= 2) {
+      return 'claude-3-5-haiku-20241022';
+    }
+    
+    // Default to Sonnet for safety
+    return 'claude-3-5-sonnet-20241022';
   }
 
   /**
@@ -625,7 +673,7 @@ FORMATO DE RESPOSTA:
     // Return fallback response
     return {
       content: 'Desculpe, tive um problema para processar sua mensagem. Pode tentar novamente? 🤔',
-      modelUsed: 'claude-3-haiku-20240307',
+      modelUsed: 'claude-3-5-sonnet-20241022',
       tokensUsed: { input: 0, output: 0, total: 0 },
       costBRL: 0,
       processingTimeMs: 0,

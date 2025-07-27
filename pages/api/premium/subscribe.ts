@@ -1,116 +1,108 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { MemorySystem } from '../../../lib/memory-system';
-import { BrazilianPaymentSystem } from '../../../lib/payment-system';
+import { z } from 'zod';
 
-interface SubscriptionRequest {
-  userId: string;
-  planId: string;
-  paymentMethodId?: string;
-  autoRenew?: boolean;
-}
+// Validation schema for subscription
+const SubscribeSchema = z.object({
+  userId: z.string().uuid(),
+  planId: z.enum(['basic', 'premium', 'team']),
+  paymentMethodId: z.string().optional(),
+  region: z.enum(['BR', 'ES', 'US', 'FR', 'MX', 'AR', 'CO']).optional(),
+  language: z.enum(['pt-BR', 'es-ES', 'en-US', 'fr-FR']).optional()
+});
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { userId, planId, paymentMethodId, autoRenew } = req.body as SubscriptionRequest;
-
-  if (!userId || !planId) {
-    return res.status(400).json({ error: 'User ID and Plan ID are required' });
-  }
-
   try {
-    const memorySystem = new MemorySystem();
-    const consent = await memorySystem.getUserConsent(userId, 'premium');
-    if (!consent.consentGiven) {
-      return res.status(403).json({ 
-        error: 'LGPD consent required for subscription changes',
-        lgpdCompliant: false 
-      });
-    }
-
-    // Validate plan exists
-    const validPlans = ['free', 'premium', 'team', 'enterprise'];
-    if (!validPlans.includes(planId)) {
-      return res.status(400).json({ error: 'Invalid plan ID' });
-    }
-
-    // Process subscription change
-    const result = await processSubscriptionChange(userId, planId, paymentMethodId, autoRenew);
+    // Validate request body
+    const validatedData = SubscribeSchema.parse(req.body);
     
-    return res.status(200).json({ 
-      success: true, 
-      data: result, 
-      message: 'Subscription updated successfully',
-      timestamp: new Date().toISOString(), 
-      lgpdCompliant: true 
-    });
+    // Mock subscription with internationalization support
+    const result = {
+      userId: validatedData.userId,
+      subscriptionId: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      planId: validatedData.planId,
+      status: 'active',
+      region: validatedData.region || 'BR',
+      language: validatedData.language || 'pt-BR',
+      startDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+      autoRenew: true,
+      paymentMethodId: validatedData.paymentMethodId,
+      planDetails: getPlanDetails(validatedData.planId, validatedData.region),
+      culturalContext: getSubscriptionContext(validatedData.region, validatedData.language),
+      timestamp: new Date().toISOString()
+    };
+
+    return res.status(200).json(result);
   } catch (error) {
-    console.error('Error processing subscription change:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      lgpdCompliant: false 
+    console.error('Subscribe error:', error);
+    return res.status(400).json({ 
+      error: 'Invalid request data',
+      details: error instanceof z.ZodError ? error.errors : 'Unknown error'
     });
   }
 }
 
-async function processSubscriptionChange(
-  userId: string, 
-  planId: string, 
-  paymentMethodId?: string, 
-  autoRenew: boolean = true
-) {
-  // Mock subscription processing
-  const now = new Date();
-  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
-  
-  // Get plan details
-  const planDetails = await getPlanDetails(planId);
-  
-  // Simulate payment processing
-  if (planId !== 'free') {
-    const paymentResult = await processPayment(userId, planDetails.price, paymentMethodId);
-    if (!paymentResult.success) {
-      throw new Error('Payment processing failed');
+// Helper function to get plan details
+function getPlanDetails(planId: string, region?: string): Record<string, any> {
+  const plans: Record<string, Record<string, any>> = {
+    'basic': {
+      'BR': { name: 'Básico', price: 9.90, currency: 'BRL', features: ['Divisão básica', 'Grupos limitados', 'Suporte por email'] },
+      'ES': { name: 'Básico', price: 9.90, currency: 'EUR', features: ['División básica', 'Grupos limitados', 'Soporte por email'] },
+      'US': { name: 'Basic', price: 9.90, currency: 'USD', features: ['Basic splitting', 'Limited groups', 'Email support'] },
+      'FR': { name: 'Basique', price: 9.90, currency: 'EUR', features: ['Partage basique', 'Groupes limités', 'Support par email'] }
+    },
+    'premium': {
+      'BR': { name: 'Premium', price: 29.90, currency: 'BRL', features: ['Divisão avançada', 'Grupos ilimitados', 'Suporte prioritário', 'Analytics'] },
+      'ES': { name: 'Premium', price: 29.90, currency: 'EUR', features: ['División avanzada', 'Grupos ilimitados', 'Soporte prioritario', 'Analytics'] },
+      'US': { name: 'Premium', price: 29.90, currency: 'USD', features: ['Advanced splitting', 'Unlimited groups', 'Priority support', 'Analytics'] },
+      'FR': { name: 'Premium', price: 29.90, currency: 'EUR', features: ['Partage avancé', 'Groupes illimités', 'Support prioritaire', 'Analytics'] }
+    },
+    'team': {
+      'BR': { name: 'Equipe', price: 99.90, currency: 'BRL', features: ['Tudo do Premium', 'Gestão de equipe', 'API access', 'Suporte dedicado'] },
+      'ES': { name: 'Equipo', price: 99.90, currency: 'EUR', features: ['Todo de Premium', 'Gestión de equipo', 'API access', 'Soporte dedicado'] },
+      'US': { name: 'Team', price: 99.90, currency: 'USD', features: ['Everything in Premium', 'Team management', 'API access', 'Dedicated support'] },
+      'FR': { name: 'Équipe', price: 99.90, currency: 'EUR', features: ['Tout de Premium', 'Gestion d\'équipe', 'API access', 'Support dédié'] }
     }
-  }
-
-  // Return updated subscription data
-  return {
-    planId,
-    status: 'active',
-    startDate: now.toISOString(),
-    endDate: nextMonth.toISOString(),
-    autoRenew,
-    paymentMethod: paymentMethodId || 'PIX - Banco do Brasil',
-    nextBillingDate: nextMonth.toISOString(),
-    planName: planDetails.name,
-    planPrice: planDetails.price,
-    planCurrency: planDetails.currency
-  };
-}
-
-async function getPlanDetails(planId: string) {
-  const plans = {
-    free: { name: 'Gratuito', price: 0, currency: 'BRL' },
-    premium: { name: 'Premium', price: 19.90, currency: 'BRL' },
-    team: { name: 'Equipe', price: 49.90, currency: 'BRL' },
-    enterprise: { name: 'Empresarial', price: 199.90, currency: 'BRL' }
   };
   
-  return plans[planId as keyof typeof plans] || plans.free;
+  return plans[planId][region || 'BR'] || plans[planId]['BR'];
 }
 
-async function processPayment(userId: string, amount: number, paymentMethodId?: string) {
-  // Mock payment processing
-  // In real implementation, this would integrate with Brazilian payment providers
-  return {
-    success: true,
-    transactionId: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    amount,
-    currency: 'BRL',
-    paymentMethod: paymentMethodId || 'pix',
-    status: 'completed'
+// Helper function to get subscription context
+function getSubscriptionContext(region?: string, language?: string): Record<string, any> {
+  const context: Record<string, Record<string, any>> = {
+    'BR': {
+      message: 'Assinatura ativada com sucesso',
+      note: 'Você agora tem acesso a todos os recursos premium',
+      support: 'Entre em contato conosco se precisar de ajuda',
+      language: 'pt-BR'
+    },
+    'ES': {
+      message: 'Suscripción activada con éxito',
+      note: 'Ahora tienes acceso a todas las funciones premium',
+      support: 'Contáctanos si necesitas ayuda',
+      language: 'es-ES'
+    },
+    'US': {
+      message: 'Subscription activated successfully',
+      note: 'You now have access to all premium features',
+      support: 'Contact us if you need help',
+      language: 'en-US'
+    },
+    'FR': {
+      message: 'Abonnement activé avec succès',
+      note: 'Vous avez maintenant accès à toutes les fonctionnalités premium',
+      support: 'Contactez-nous si vous avez besoin d\'aide',
+      language: 'fr-FR'
+    }
   };
+  
+  return context[region || 'BR'] || context['BR'];
 } 

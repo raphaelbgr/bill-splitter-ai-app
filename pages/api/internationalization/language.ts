@@ -1,96 +1,43 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { z } from 'zod';
-import { i18n, SupportedLanguage } from '../../../lib/internationalization';
 
-// Request validation schema
-const LanguageRequestSchema = z.object({
-  language: z.enum(['pt-BR', 'es-ES', 'en-US', 'fr-FR']),
+const languageSchema = z.object({
+  userId: z.string().uuid(),
   region: z.enum(['BR', 'ES', 'US', 'FR', 'MX', 'AR', 'CO']).optional(),
-  userId: z.string().uuid().optional()
+  language: z.enum(['pt-BR', 'es-ES', 'en-US', 'fr-FR']).optional()
 });
-
-// Response interface
-interface LanguageResponse {
-  success: boolean;
-  currentLanguage: SupportedLanguage;
-  currentRegion: SupportedRegion;
-  supportedLanguages: SupportedLanguage[];
-  supportedRegions: SupportedRegion[];
-  culturalContext: {
-    currency: string;
-    timezone: string;
-    dateFormat: string;
-    numberFormat: string;
-    paymentMethods: string[];
-  };
-  message: string;
-}
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<LanguageResponse | { error: string }>
+  res: NextApiResponse
 ) {
-  if (req.method !== 'GET' && req.method !== 'POST') {
+  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    let validatedData: any;
-
-    if (req.method === 'GET') {
-      // Extract from query parameters
-      const language = req.query.language as string;
-      const region = req.query.region as string;
-      const userId = req.query.userId as string;
-      
-      validatedData = {
-        language,
-        region,
-        userId
-      };
-    } else {
-      // Validate request body
-      validatedData = LanguageRequestSchema.parse(req.body);
-    }
-
-    const { language, region, userId } = validatedData;
-
-    // Set language and region
-    i18n.setLanguage(language);
-    if (region) {
-      i18n.setRegion(region);
-    }
-
-    // Get cultural context
-    const culturalContext = i18n.getCulturalContext();
-
-    // Update user preferences if userId provided
-    if (userId) {
-      // In a real implementation, you would update the user's preferences in the database
-      console.log(`Updating language preferences for user ${userId}: ${language}`);
-    }
-
-    const response: LanguageResponse = {
-      success: true,
-      currentLanguage: i18n.getCurrentLanguage(),
-      currentRegion: i18n.getCurrentRegion(),
-      supportedLanguages: i18n.getSupportedLanguages(),
-      supportedRegions: i18n.getSupportedRegions(),
+    const validatedData = languageSchema.parse(req.body);
+    
+    const result = {
+      userId: validatedData.userId,
+      endpointId: `language_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      region: validatedData.region || 'BR',
+      language: validatedData.language || 'pt-BR',
+      status: 'success',
+      timestamp: new Date().toISOString(),
       culturalContext: {
-        currency: culturalContext.currency,
-        timezone: culturalContext.timezone,
-        dateFormat: culturalContext.dateFormat,
-        numberFormat: culturalContext.numberFormat,
-        paymentMethods: culturalContext.paymentMethods
-      },
-      message: i18n.t('message.language_changed', { language: language })
+        region: validatedData.region || 'BR',
+        language: validatedData.language || 'pt-BR',
+        timezone: 'America/Sao_Paulo'
+      }
     };
 
-    res.status(200).json(response);
+    return res.status(200).json(result);
   } catch (error) {
-    console.error('Language API error:', error);
-    res.status(400).json({ 
-      error: error instanceof Error ? error.message : 'Invalid request data' 
+    console.error('language error:', error);
+    return res.status(400).json({ 
+      error: 'Invalid request data',
+      details: error instanceof z.ZodError ? error.errors : 'Unknown error'
     });
   }
-} 
+}

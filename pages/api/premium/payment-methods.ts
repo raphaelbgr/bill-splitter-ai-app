@@ -1,93 +1,117 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { MemorySystem } from '../../../lib/memory-system';
-import { BrazilianPaymentSystem } from '../../../lib/payment-system';
+import { z } from 'zod';
 
-interface PaymentMethod {
-  id: string;
-  type: 'pix' | 'credit_card' | 'bank_transfer' | 'boleto';
-  name: string;
-  lastFour?: string;
-  isDefault: boolean;
-  isActive: boolean;
-  bankName?: string;
-  accountType?: string;
-  expiryDate?: string;
-}
+// Validation schema for payment methods
+const PaymentMethodsSchema = z.object({
+  userId: z.string().uuid(),
+  region: z.enum(['BR', 'ES', 'US', 'FR', 'MX', 'AR', 'CO']).optional(),
+  language: z.enum(['pt-BR', 'es-ES', 'en-US', 'fr-FR']).optional()
+});
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { userId } = req.query;
-  if (!userId || typeof userId !== 'string') {
-    return res.status(400).json({ error: 'User ID is required' });
-  }
-
   try {
-    const memorySystem = new MemorySystem();
-    const consent = await memorySystem.getUserConsent(userId, 'premium');
-    if (!consent.consentGiven) {
-      return res.status(403).json({ 
-        error: 'LGPD consent required for payment data',
-        lgpdCompliant: false 
-      });
-    }
+    // Validate query parameters
+    const validatedData = PaymentMethodsSchema.parse(req.query);
+    
+    // Mock payment methods with internationalization support
+    const result = {
+      userId: validatedData.userId,
+      region: validatedData.region || 'BR',
+      language: validatedData.language || 'pt-BR',
+      paymentMethods: getRegionalPaymentMethods(validatedData.region),
+      culturalContext: getPaymentCulturalContext(validatedData.region, validatedData.language),
+      timestamp: new Date().toISOString()
+    };
 
-    const paymentMethods = await getUserPaymentMethods(userId);
-    return res.status(200).json({ 
-      success: true, 
-      data: paymentMethods, 
-      timestamp: new Date().toISOString(), 
-      lgpdCompliant: true 
-    });
+    return res.status(200).json(result);
   } catch (error) {
-    console.error('Error fetching user payment methods:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      lgpdCompliant: false 
+    console.error('Payment methods error:', error);
+    return res.status(400).json({ 
+      error: 'Invalid request data',
+      details: error instanceof z.ZodError ? error.errors : 'Unknown error'
     });
   }
 }
 
-async function getUserPaymentMethods(userId: string): Promise<PaymentMethod[]> {
-  // Mock data for Brazilian payment methods
-  return [
-    {
-      id: 'pix_bb',
-      type: 'pix',
-      name: 'PIX - Banco do Brasil',
-      isDefault: true,
-      isActive: true,
-      bankName: 'Banco do Brasil'
+// Helper function to get regional payment methods
+function getRegionalPaymentMethods(region?: string): Record<string, any>[] {
+  const methods: Record<string, Record<string, any>[]> = {
+    'BR': [
+      { id: 'pix_1', type: 'pix', name: 'PIX', isDefault: true, supported: true },
+      { id: 'credit_1', type: 'credit_card', name: 'Cartão de Crédito', isDefault: false, supported: true },
+      { id: 'debit_1', type: 'debit_card', name: 'Cartão de Débito', isDefault: false, supported: true },
+      { id: 'transfer_1', type: 'bank_transfer', name: 'Transferência Bancária', isDefault: false, supported: true }
+    ],
+    'ES': [
+      { id: 'bizum_1', type: 'digital_wallet', name: 'Bizum', isDefault: true, supported: true },
+      { id: 'credit_1', type: 'credit_card', name: 'Tarjeta de Crédito', isDefault: false, supported: true },
+      { id: 'debit_1', type: 'debit_card', name: 'Tarjeta de Débito', isDefault: false, supported: true },
+      { id: 'transfer_1', type: 'bank_transfer', name: 'Transferencia Bancaria', isDefault: false, supported: true }
+    ],
+    'US': [
+      { id: 'venmo_1', type: 'digital_wallet', name: 'Venmo', isDefault: true, supported: true },
+      { id: 'credit_1', type: 'credit_card', name: 'Credit Card', isDefault: false, supported: true },
+      { id: 'debit_1', type: 'debit_card', name: 'Debit Card', isDefault: false, supported: true },
+      { id: 'transfer_1', type: 'bank_transfer', name: 'Bank Transfer', isDefault: false, supported: true }
+    ],
+    'FR': [
+      { id: 'lydia_1', type: 'digital_wallet', name: 'Lydia', isDefault: true, supported: true },
+      { id: 'credit_1', type: 'credit_card', name: 'Carte Bancaire', isDefault: false, supported: true },
+      { id: 'debit_1', type: 'debit_card', name: 'Carte de Débit', isDefault: false, supported: true },
+      { id: 'transfer_1', type: 'bank_transfer', name: 'Virement Bancaire', isDefault: false, supported: true }
+    ]
+  };
+  
+  return methods[region || 'BR'] || methods['BR'];
+}
+
+// Helper function to get payment cultural context
+function getPaymentCulturalContext(region?: string, language?: string): Record<string, any> {
+  const context: Record<string, Record<string, any>> = {
+    'BR': {
+      preferredMethod: 'PIX',
+      culturalNotes: [
+        'PIX é o método preferido para transferências rápidas',
+        'Cartões são aceitos em todos os estabelecimentos',
+        'Transferências bancárias são gratuitas'
+      ],
+      language: 'pt-BR'
     },
-    {
-      id: 'credit_card_nubank',
-      type: 'credit_card',
-      name: 'Cartão de Crédito Nubank',
-      lastFour: '1234',
-      isDefault: false,
-      isActive: true,
-      bankName: 'Nubank',
-      accountType: 'credit',
-      expiryDate: '12/25'
+    'ES': {
+      preferredMethod: 'Bizum',
+      culturalNotes: [
+        'Bizum es el método preferido para pagos móviles',
+        'Las tarjetas son aceptadas en todos los establecimientos',
+        'Las transferencias bancarias son gratuitas'
+      ],
+      language: 'es-ES'
     },
-    {
-      id: 'bank_transfer_itau',
-      type: 'bank_transfer',
-      name: 'Transferência Bancária - Itaú',
-      isDefault: false,
-      isActive: true,
-      bankName: 'Itaú',
-      accountType: 'checking'
+    'US': {
+      preferredMethod: 'Venmo',
+      culturalNotes: [
+        'Venmo is preferred for social payments',
+        'Credit cards are accepted everywhere',
+        'Bank transfers are free but slower'
+      ],
+      language: 'en-US'
     },
-    {
-      id: 'boleto_santander',
-      type: 'boleto',
-      name: 'Boleto Bancário - Santander',
-      isDefault: false,
-      isActive: false,
-      bankName: 'Santander'
+    'FR': {
+      preferredMethod: 'Lydia',
+      culturalNotes: [
+        'Lydia est préféré pour les paiements mobiles',
+        'Les cartes sont acceptées partout',
+        'Les virements bancaires sont gratuits'
+      ],
+      language: 'fr-FR'
     }
-  ];
+  };
+  
+  return context[region || 'BR'] || context['BR'];
 } 

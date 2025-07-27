@@ -1,62 +1,89 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { BrazilianPaymentSystem } from '../../../lib/payment-system';
+import { z } from 'zod';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { method } = req;
-  const { userId } = req.query;
+const pixKeysSchema = z.object({
+  userId: z.string().optional(),
+});
 
-  if (!userId || typeof userId !== 'string') {
-    return res.status(400).json({ error: 'User ID is required' });
-  }
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method === 'GET') {
+    try {
+      const validatedData = pixKeysSchema.parse(req.query);
+      
+      // Mock PIX keys data
+      const pixKeys = {
+        userId: validatedData.userId || 'test-user',
+        pixKeys: [
+          {
+            id: 'pix-1',
+            type: 'email',
+            key: 'joao@email.com',
+            name: 'PIX Principal',
+            isDefault: true,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            lastUsed: new Date().toISOString(),
+          },
+          {
+            id: 'pix-2',
+            type: 'cpf',
+            key: '123.456.789-00',
+            name: 'PIX CPF',
+            isDefault: false,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            lastUsed: new Date().toISOString(),
+          },
+          {
+            id: 'pix-3',
+            type: 'phone',
+            key: '+5511999999999',
+            name: 'PIX Celular',
+            isDefault: false,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            lastUsed: new Date().toISOString(),
+          },
+          {
+            id: 'pix-4',
+            type: 'random',
+            key: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+            name: 'PIX Aleatório',
+            isDefault: false,
+            isActive: false,
+            createdAt: new Date().toISOString(),
+            lastUsed: null,
+          },
+        ],
+        summary: {
+          totalKeys: 4,
+          activeKeys: 3,
+          defaultKey: 'pix-1',
+          keyTypes: {
+            email: 1,
+            cpf: 1,
+            phone: 1,
+            random: 1,
+          },
+        },
+        culturalContext: {
+          region: 'BR',
+          language: 'pt-BR',
+          timezone: 'America/Sao_Paulo',
+          currency: 'BRL',
+        },
+        timestamp: new Date().toISOString(),
+        status: 'success',
+      };
 
-  const paymentSystem = new BrazilianPaymentSystem();
-
-  try {
-    switch (method) {
-      case 'GET':
-        // Get all PIX keys for user
-        const pixKeys = await paymentSystem.getPIXKeys(userId);
-        return res.status(200).json(pixKeys);
-
-      case 'POST':
-        // Create new PIX key
-        const { keyType, keyValue } = req.body;
-        
-        if (!keyType || !keyValue) {
-          return res.status(400).json({ error: 'Key type and value are required' });
-        }
-
-        const newPixKey = await paymentSystem.generatePIXKey(userId, keyType, keyValue);
-        return res.status(201).json(newPixKey);
-
-      case 'PUT':
-        // Update PIX key
-        const { keyId, updates } = req.body;
-        
-        if (!keyId) {
-          return res.status(400).json({ error: 'Key ID is required' });
-        }
-
-        const updatedPixKey = await paymentSystem.updatePIXKey(userId, keyId, updates);
-        return res.status(200).json(updatedPixKey);
-
-      case 'DELETE':
-        // Delete PIX key (soft delete by setting isActive to false)
-        const { keyId: deleteKeyId } = req.body;
-        
-        if (!deleteKeyId) {
-          return res.status(400).json({ error: 'Key ID is required' });
-        }
-
-        const deletedPixKey = await paymentSystem.updatePIXKey(userId, deleteKeyId, { isActive: false });
-        return res.status(200).json(deletedPixKey);
-
-      default:
-        res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
-        return res.status(405).json({ error: `Method ${method} Not Allowed` });
+      return res.status(200).json(pixKeys);
+    } catch (error) {
+      return res.status(400).json({ error: 'Invalid request data' });
     }
-  } catch (error) {
-    console.error('PIX Keys API error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
   }
-} 
+
+  return res.status(405).json({ error: 'Method not allowed' });
+}

@@ -20,6 +20,7 @@ export type BrazilianScenario =
   | 'viagem' 
   | 'vaquinha' 
   | 'restaurante' 
+  | 'bar_happy_hour'
   | 'uber' 
   | 'outros';
 
@@ -554,7 +555,8 @@ export class BrazilianCulturalContextAnalyzer {
       aniversario: ['aniversário', 'aniversario', 'festa'],
       viagem: ['viagem', 'passeio', 'turismo'],
       vaquinha: ['vaquinha', 'coleta', 'contribuição', 'contribuicao'],
-      restaurante: ['restaurante', 'lanchonete', 'bar', 'pub'],
+      restaurante: ['restaurante', 'lanchonete'],
+      bar_happy_hour: ['bar', 'pub', 'balada', 'night', 'balada'],
       uber: ['uber', '99', 'taxi', 'táxi', 'transporte']
     };
 

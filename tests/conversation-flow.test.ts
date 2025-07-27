@@ -1,6 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createMocks } from 'node-mocks-http';
 import { RachaAIClaudeClient } from '../lib/claude-client';
+import { createClient } from '@supabase/supabase-js';
+
+// Mock Supabase client is already set up in jest.setup.js
+// No environment variables needed - client is mocked
 
 // Mock the chat API handler
 const chatHandler = require('../pages/api/ai/chat').default;

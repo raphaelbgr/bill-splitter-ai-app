@@ -587,16 +587,8 @@ describe('Comprehensive API Endpoints Tests', () => {
         method: 'POST',
         body: {
           userId: 'test-user',
-          context: {
-            scenario: 'restaurant',
-            amount: 150.00,
-            region: 'BR'
-          },
-          participants: [
-            { id: 'user1', name: 'João', preferences: ['pix', 'split_equal'] },
-            { id: 'user2', name: 'Maria', preferences: ['credit_card', 'split_by_items'] },
-            { id: 'user3', name: 'Pedro', preferences: ['pix', 'split_equal'] }
-          ]
+          context: 'Jantar em grupo no restaurante',
+          participants: ['João', 'Maria', 'Pedro']
         }
       });
 
@@ -646,11 +638,18 @@ describe('Comprehensive API Endpoints Tests', () => {
       const { req, res } = createMocks({
         method: 'POST',
         body: {
-          userId: 'test-user',
-          type: 'pix',
-          name: 'PIX Principal',
-          bankName: 'Banco do Brasil',
-          accountNumber: '12345-6'
+          userId: '123e4567-e89b-12d3-a456-426614174000',
+          paymentMethod: {
+            type: 'pix',
+            name: 'PIX Principal',
+            details: {
+              pixKey: 'test@example.com',
+              bankName: 'Banco do Brasil'
+            },
+            isDefault: true
+          },
+          region: 'BR',
+          language: 'pt-BR'
         }
       });
 
@@ -664,8 +663,11 @@ describe('Comprehensive API Endpoints Tests', () => {
       const { req, res } = createMocks({
         method: 'POST',
         body: {
-          userId: 'test-user',
-          subscriptionId: 'sub-123'
+          userId: '123e4567-e89b-12d3-a456-426614174000',
+          subscriptionId: 'sub-123',
+          reason: 'cost',
+          region: 'BR',
+          language: 'pt-BR'
         }
       });
 
@@ -679,10 +681,11 @@ describe('Comprehensive API Endpoints Tests', () => {
       const { req, res } = createMocks({
         method: 'POST',
         body: {
-          userId: 'test-user',
+          userId: '123e4567-e89b-12d3-a456-426614174000',
           planId: 'premium',
-          paymentMethodId: 'pm_123456789',
-          autoRenew: true
+          paymentMethodId: 'pm-123',
+          region: 'BR',
+          language: 'pt-BR'
         }
       });
 
@@ -696,7 +699,9 @@ describe('Comprehensive API Endpoints Tests', () => {
       const { req, res } = createMocks({
         method: 'GET',
         query: {
-          userId: 'test-user'
+          userId: '123e4567-e89b-12d3-a456-426614174000',
+          region: 'BR',
+          language: 'pt-BR'
         }
       });
 
@@ -710,7 +715,10 @@ describe('Comprehensive API Endpoints Tests', () => {
       const { req, res } = createMocks({
         method: 'GET',
         query: {
-          userId: 'test-user'
+          userId: '123e4567-e89b-12d3-a456-426614174000',
+          period: 'month',
+          region: 'BR',
+          language: 'pt-BR'
         }
       });
 
@@ -724,7 +732,9 @@ describe('Comprehensive API Endpoints Tests', () => {
       const { req, res } = createMocks({
         method: 'GET',
         query: {
-          userId: 'test-user'
+          userId: '123e4567-e89b-12d3-a456-426614174000',
+          region: 'BR',
+          language: 'pt-BR'
         }
       });
 
@@ -738,7 +748,8 @@ describe('Comprehensive API Endpoints Tests', () => {
       const { req, res } = createMocks({
         method: 'GET',
         query: {
-          userId: 'test-user'
+          region: 'BR',
+          language: 'pt-BR'
         }
       });
 

@@ -1,9 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
 
-// Mock environment variables for testing
-const mockSupabaseUrl = 'https://test.supabase.co';
-const mockSupabaseKey = 'test-key';
+// Mock Supabase client is already set up in jest.setup.js
+// No environment variables needed - client is mocked
 
 describe('Supabase Integration Tests', () => {
   let testClient: any;

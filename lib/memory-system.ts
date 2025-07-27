@@ -505,6 +505,35 @@ export class MemorySystem {
 
     return analytics;
   }
+
+  /**
+   * Get automation analytics (for intelligent automation system)
+   */
+  async getAutomationAnalytics(userId: string): Promise<any> {
+    try {
+      const analytics = await this.redis.get(`automation:${userId}`);
+      return analytics ? JSON.parse(analytics) : {
+        totalSuggestions: 0,
+        acceptedSuggestions: 0,
+        accuracyRate: 0,
+        timeSaved: 0,
+        userSatisfaction: 0,
+        culturalAccuracy: 0,
+        costSavings: 0
+      };
+    } catch (error) {
+      console.error('Error getting automation analytics:', error);
+      return {
+        totalSuggestions: 0,
+        acceptedSuggestions: 0,
+        accuracyRate: 0,
+        timeSaved: 0,
+        userSatisfaction: 0,
+        culturalAccuracy: 0,
+        costSavings: 0
+      };
+    }
+  }
 }
 
 // Export validation schemas

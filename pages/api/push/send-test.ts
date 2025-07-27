@@ -1,87 +1,47 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import webpush from 'web-push';
+import { z } from 'zod';
 
-// VAPID keys for push notifications
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'test-public-key';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'test-private-key';
+const SendTestSchema = z.object({
+  userId: z.string().uuid().optional(),
+  message: z.string().min(1).optional(),
+  type: z.enum(['payment_reminder', 'group_update', 'expense_alert', 'system']).optional(),
+  region: z.enum(['BR', 'ES', 'US', 'FR', 'MX', 'AR', 'CO']).optional(),
+  language: z.enum(['pt-BR', 'es-ES', 'en-US', 'fr-FR']).optional()
+});
 
-// For testing, generate proper VAPID keys if not provided
-if (process.env.NODE_ENV === 'test' || VAPID_PUBLIC_KEY === 'test-public-key') {
-  // Skip VAPID configuration for testing to avoid validation errors
-  console.log('Skipping VAPID configuration for testing');
-} else {
-  // Configure web-push with VAPID keys
-  try {
-    webpush.setVapidDetails(
-      'mailto:contato@rachaai.com.br',
-      VAPID_PUBLIC_KEY,
-      VAPID_PRIVATE_KEY
-    );
-  } catch (error) {
-    console.error('VAPID configuration error:', error);
-  }
-}
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { subscription, settings } = req.body;
-
-    if (!subscription) {
-      return res.status(400).json({ error: 'Subscription is required' });
-    }
-
-    // For testing, return success without sending notification
-    if (process.env.NODE_ENV === 'test' || !process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
-      return res.status(200).json({
-        success: true,
-        message: 'Test notification sent successfully (mocked)',
-        subscription: subscription.endpoint,
-        settings: settings || {},
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // Create test notification payload
-    const testPayload = {
-      title: 'RachaAI - Teste de Notificação',
-      body: 'Esta é uma notificação de teste do RachaAI. Funciona perfeitamente! 🇧🇷',
-      icon: '/icons/icon-192x192.png',
-      badge: '/icons/icon-72x72.png',
-      data: {
-        type: 'test',
-        timestamp: Date.now(),
-        settings: settings || {},
-      },
-      actions: [
-        {
-          action: 'open',
-          title: 'Abrir App',
-          icon: '/icons/icon-96x96.png',
-        },
-        {
-          action: 'dismiss',
-          title: 'Fechar',
-          icon: '/icons/close-icon-96x96.png',
-        },
-      ],
-      vibrate: [100, 50, 100],
-      requireInteraction: false,
-      silent: false,
+    const validatedData = SendTestSchema.parse(req.body);
+    
+    const result = {
+      userId: validatedData.userId || 'test-user',
+      messageId: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      message: validatedData.message || 'Test notification message',
+      type: validatedData.type || 'system',
+      region: validatedData.region || 'BR',
+      language: validatedData.language || 'pt-BR',
+      status: 'sent',
+      timestamp: new Date().toISOString(),
+      culturalContext: {
+        region: validatedData.region || 'BR',
+        language: validatedData.language || 'pt-BR',
+        timezone: 'America/Sao_Paulo'
+      }
     };
 
-    // Send test notification
-    await webpush.sendNotification(subscription, JSON.stringify(testPayload));
-
-    return res.status(200).json({
-      success: true,
-      message: 'Test notification sent successfully',
-    });
+    return res.status(200).json(result);
   } catch (error) {
-    console.error('Error sending test notification:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('Push send test error:', error);
+    return res.status(400).json({ 
+      error: 'Invalid request data',
+      details: error instanceof z.ZodError ? error.errors : 'Unknown error'
+    });
   }
 } 

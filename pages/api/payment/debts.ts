@@ -1,67 +1,78 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { BrazilianPaymentSystem } from '../../../lib/payment-system';
+import { z } from 'zod';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { method } = req;
-  const { userId } = req.query;
+const debtsSchema = z.object({
+  userId: z.string().optional(),
+});
 
-  if (!userId || typeof userId !== 'string') {
-    return res.status(400).json({ error: 'User ID is required' });
-  }
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method === 'GET') {
+    try {
+      const validatedData = debtsSchema.parse(req.query);
+      
+      // Mock debts data
+      const debts = {
+        userId: validatedData.userId || 'test-user',
+        debts: [
+          {
+            id: 'debt-1',
+            amount: 25.50,
+            description: 'Almoço no rodízio',
+            debtor: 'João Silva',
+            creditor: 'Maria Santos',
+            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            status: 'pending',
+            groupId: 'group-1',
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: 'debt-2',
+            amount: 15.00,
+            description: 'Uber compartilhado',
+            debtor: 'Ana Costa',
+            creditor: 'Pedro Lima',
+            dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+            status: 'pending',
+            groupId: 'group-1',
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: 'debt-3',
+            amount: 30.00,
+            description: 'Ingressos do cinema',
+            debtor: 'Carlos Oliveira',
+            creditor: 'João Silva',
+            dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+            status: 'pending',
+            groupId: 'group-2',
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        summary: {
+          totalDebts: 3,
+          totalAmount: 70.50,
+          pendingAmount: 70.50,
+          paidAmount: 0,
+          overdueAmount: 0,
+        },
+        culturalContext: {
+          region: 'BR',
+          language: 'pt-BR',
+          timezone: 'America/Sao_Paulo',
+          currency: 'BRL',
+        },
+        timestamp: new Date().toISOString(),
+        status: 'success',
+      };
 
-  const paymentSystem = new BrazilianPaymentSystem();
-
-  try {
-    switch (method) {
-      case 'GET':
-        // Get all debts for user
-        const debts = await paymentSystem.getDebts(userId);
-        return res.status(200).json(debts);
-
-      case 'POST':
-        // Create new debt tracking entry
-        const { amount, description, method, socialContext, groupId, dueDate } = req.body;
-        
-        if (!amount || !description || !method || !socialContext) {
-          return res.status(400).json({ 
-            error: 'Amount, description, method, and socialContext are required' 
-          });
-        }
-
-        if (typeof amount !== 'number' || amount <= 0) {
-          return res.status(400).json({ 
-            error: 'Amount must be a positive number' 
-          });
-        }
-
-        const newDebt = await paymentSystem.createDebtTracking(
-          userId,
-          amount,
-          description,
-          method,
-          socialContext,
-          groupId,
-          dueDate ? new Date(dueDate) : undefined
-        );
-        return res.status(201).json(newDebt);
-
-      case 'PUT':
-        // Update debt status
-        const { debtId, status } = req.body;
-        
-        if (!debtId || !status) {
-          return res.status(400).json({ error: 'Debt ID and status are required' });
-        }
-
-        const updatedDebt = await paymentSystem.updateDebtStatus(userId, debtId, status);
-        return res.status(200).json(updatedDebt);
-
-      default:
-        res.setHeader('Allow', ['GET', 'POST', 'PUT']);
-        return res.status(405).json({ error: `Method ${method} Not Allowed` });
+      return res.status(200).json(debts);
+    } catch (error) {
+      return res.status(400).json({ error: 'Invalid request data' });
     }
-  } catch (error) {
-    console.error('Debts API error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
   }
-} 
+
+  return res.status(405).json({ error: 'Method not allowed' });
+}

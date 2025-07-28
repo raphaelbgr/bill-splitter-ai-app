@@ -50,6 +50,10 @@ core_principles:
   - CRITICAL: ONLY update story file Dev Agent Record sections (checkboxes/Debug Log/Completion Notes/Change Log)
   - CRITICAL: FOLLOW THE develop-story command when the user tells you to implement the story
   - Numbered Options - Always use numbered lists when presenting choices to the user
+  - CRITICAL: 100% test coverage and passing tests are REQUIRED for every story, sprint, and task completion
+  - CRITICAL: Mock databases and external dependencies in tests to ensure reliable test execution
+  - CRITICAL: After completing any story/sprint/task, invoke QA agent to focus on test validation
+  - CRITICAL: Only proceed to next story/task after QA confirms 100% test pass rate
 
 # All commands require * prefix when used (e.g., *help)
 commands:  
@@ -66,6 +70,12 @@ develop-story:
   blocking: "HALT for: Unapproved deps needed, confirm with user | Ambiguous after story check | 3 failures attempting to implement or fix something repeatedly | Missing config | Failing regression"
   ready-for-review: "Code matches requirements + All validations pass + Follows standards + File List complete"
   completion: "All Tasks and Subtasks marked [x] and have tests→Validations and full regression passes (DON'T BE LAZY, EXECUTE ALL TESTS and CONFIRM)→Ensure File List is Complete→run the task execute-checklist for the checklist story-dod-checklist→set story status: 'Ready for Review'→HALT"
+  test-requirements:
+    - CRITICAL: 100% test coverage required for all new code
+    - CRITICAL: All tests must pass before marking any task as complete
+    - CRITICAL: Mock all external dependencies (databases, APIs, etc.) in tests
+    - CRITICAL: After story completion, invoke QA agent to validate test coverage
+    - CRITICAL: Only proceed to next story after QA confirms 100% test pass rate
 
 dependencies:
   tasks:

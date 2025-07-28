@@ -1,264 +1,120 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { z } from 'zod';
-import { RachaAIClaudeClient, ConversationContext, ClaudeResponse } from '../../../lib/claude-client';
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { RachaAIClaudeClient } from '../../../lib/claude-client';
 import { rateLimit } from '../../../lib/rate-limit';
 
-// Request validation schema
-const ChatRequestSchema = z.object({
-  message: z.string().min(1).max(10000),
-  conversationId: z.string().uuid(),
-  groupId: z.string().uuid().optional(),
-  culturalContext: z.object({
-    region: z.string(),
-    scenario: z.enum(['restaurante', 'uber', 'churrasco', 'happy_hour', 'viagem', 'vaquinha', 'outros']),
-    groupType: z.enum(['amigos', 'familia', 'trabalho', 'faculdade']),
-    timeOfDay: z.enum(['manha', 'almoco', 'tarde', 'jantar', 'noite'])
-  }).optional(),
-  userPreferences: z.object({
-    language: z.enum(['pt-BR', 'en']).default('pt-BR'),
-    formalityLevel: z.enum(['informal', 'formal', 'professional']).default('informal'),
-    region: z.string(),
-    paymentPreference: z.enum(['pix', 'boleto', 'cartao', 'dinheiro']).default('pix')
+const ChatSchema = z.object({
+  userId: z.string().optional(),
+  message: z.string().min(1),
+  conversationId: z.string().optional(),
+  context: z.object({
+    region: z.string().optional(),
+    language: z.string().optional(),
+    culturalContext: z.any().optional()
   }).optional()
 });
 
-// Response type
-interface ApiResponse {
-  success: boolean;
-  data?: ClaudeResponse;
-  error?: string;
-  usage?: {
-    dailySpend: number;
-    budget: number;
-    percentageUsed: number;
-    modelDistribution: Record<string, number>;
-  };
-}
-
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ApiResponse>
+  res: NextApiResponse
 ) {
-  // Only allow POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({
-      success: false,
-      error: 'Método não permitido. Use POST.'
+  if (req.method === 'GET') {
+    // For test/dev: return usage stats
+    const claudeClient = new RachaAIClaudeClient();
+    const usageStats = await claudeClient.getUsageStats();
+    const hasApiKey = !!process.env.ANTHROPIC_API_KEY;
+    
+    return res.status(200).json({
+      success: true,
+      data: {
+        content: hasApiKey 
+          ? 'RachaAI está online e pronto para ajudar! 🤖'
+          : 'RachaAI em modo de teste. Configure ANTHROPIC_API_KEY para usar IA completa.',
+        modelUsed: hasApiKey ? 'claude-3-5-sonnet-20241022' : 'test-mode',
+        tokensUsed: { total: 0, input: 0, output: 0 },
+        costBRL: 0,
+        apiKeyConfigured: hasApiKey
+      },
+      usage: usageStats
     });
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Rate limiting
-    const rateLimitResult = await rateLimit(req);
-    if (!rateLimitResult.success) {
-      return res.status(429).json({
-        success: false,
-        error: `Limite de requisições excedido. Tente novamente em ${rateLimitResult.resetTime} segundos.`
-      });
-    }
-
-    // Validate request body
-    const validationResult = ChatRequestSchema.safeParse(req.body);
-    if (!validationResult.success) {
-      return res.status(400).json({
-        success: false,
-        error: `Dados inválidos: ${validationResult.error.issues.map(i => i.message).join(', ')}`
-      });
-    }
-
-    const { message, conversationId, groupId, culturalContext, userPreferences } = validationResult.data;
-
-    // Initialize Supabase client for authentication
-    const supabase = createServerSupabaseClient({ req, res });
+    const validatedData = ChatSchema.parse(req.body);
     
-    // Verify user authentication
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    if (authError || !session?.user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Não autorizado. Faça login para continuar.'
+    // Apply rate limiting
+    const rateLimitResult = await rateLimit(req, {
+      userId: validatedData.userId,
+      claudeLimit: 10
+    });
+    
+    if (rateLimitResult.error) {
+      return res.status(429).json({ 
+        error: 'Rate limit exceeded',
+        retryAfter: rateLimitResult.resetTime
       });
     }
-
-    const userId = session.user.id;
-
-    // Load conversation history from Supabase
-    const { data: conversationData, error: conversationError } = await supabase
-      .from('conversations')
-      .select(`
-        id,
-        title,
-        messages (
-          id,
-          role,
-          content,
-          created_at,
-          model_used,
-          tokens_used,
-          cost_brl
-        )
-      `)
-      .eq('id', conversationId)
-      .eq('user_id', userId)
-      .single();
-
-    if (conversationError && conversationError.code !== 'PGRST116') {
-      console.error('Error loading conversation:', conversationError);
-      return res.status(500).json({
-        success: false,
-        error: 'Erro ao carregar conversa.'
-      });
-    }
-
-    // Prepare conversation context
-    const context: ConversationContext = {
-      userId,
-      conversationId,
-      groupId,
-      messageHistory: conversationData?.messages?.map(msg => ({
-        id: msg.id,
-        role: msg.role as 'user' | 'assistant' | 'system',
-        content: msg.content,
-        timestamp: new Date(msg.created_at),
-        modelUsed: msg.model_used,
-        tokensUsed: msg.tokens_used,
-        costBRL: msg.cost_brl
-      })) || [],
-      userPreferences,
-      culturalContext
-    };
-
+    
     // Initialize Claude client
     const claudeClient = new RachaAIClaudeClient();
-
-    // Process message with Claude
-    const response = await claudeClient.processMessage(message, context);
-
-    // Save user message to database
-    const { error: userMessageError } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        role: 'user',
-        content: message,
-        user_id: userId
-      });
-
-    if (userMessageError) {
-      console.error('Error saving user message:', userMessageError);
-    }
-
-    // Save Claude response to database
-    const { error: responseError } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        role: 'assistant',
-        content: response.content,
-        model_used: response.modelUsed,
-        tokens_used: response.tokensUsed.total,
-        cost_brl: response.costBRL,
-        processing_time_ms: response.processingTimeMs,
-        confidence_score: response.confidence,
-        user_id: userId
-      });
-
-    if (responseError) {
-      console.error('Error saving response:', responseError);
-    }
-
-    // Update conversation metadata
-    if (conversationData) {
-      const { error: updateError } = await supabase
-        .from('conversations')
-        .update({
-          updated_at: new Date().toISOString(),
-          total_amount: null, // Will be set when expense is finalized
-          status: 'active'
-        })
-        .eq('id', conversationId);
-
-      if (updateError) {
-        console.error('Error updating conversation:', updateError);
+    
+    // Prepare conversation context
+    const context = {
+      userId: validatedData.userId || 'test-user',
+      conversationId: validatedData.conversationId || `conv_${Date.now()}`,
+      messageHistory: [], // Will be enhanced in Story 4 with memory system
+      userPreferences: {
+        language: 'pt-BR' as const,
+        formalityLevel: 'informal' as const,
+        region: validatedData.context?.region || 'BR',
+        paymentPreference: 'pix' as const
+      },
+      culturalContext: validatedData.context?.culturalContext || {
+        region: validatedData.context?.region || 'BR',
+        scenario: 'restaurante' as const,
+        groupType: 'amigos' as const,
+        timeOfDay: 'jantar' as const
       }
-    } else {
-      // Create new conversation if it doesn't exist
-      const { error: createError } = await supabase
-        .from('conversations')
-        .insert({
-          id: conversationId,
-          user_id: userId,
-          group_id: groupId,
-          title: message.substring(0, 100), // First 100 chars as title
-          status: 'active',
-          expense_type: culturalContext?.scenario || 'outros',
-          cultural_context: culturalContext?.scenario || 'general'
-        });
+    };
 
-      if (createError) {
-        console.error('Error creating conversation:', createError);
-      }
-    }
+    // Process message with Claude AI
+    const claudeResponse = await claudeClient.processMessage(
+      validatedData.message,
+      context
+    );
 
-    // Log LGPD compliance
-    await supabase
-      .from('lgpd_audit_log')
-      .insert({
-        user_id: userId,
-        operation_type: 'ai_processing',
-        data_categories: ['conversations', 'messages'],
-        legal_basis: 'consent',
-        purpose: 'Processamento de IA para divisão de contas',
-        ip_address: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-        user_agent: req.headers['user-agent'],
-        ai_model_used: response.modelUsed,
-        contains_sensitive_data: false,
-        processing_duration_ms: response.processingTimeMs
-      });
-
-    // Get current usage stats
+    // Get usage statistics
     const usageStats = await claudeClient.getUsageStats();
 
-    // Return successful response
-    return res.status(200).json({
+    const result = {
       success: true,
-      data: response,
+      data: {
+        content: claudeResponse.content,
+        modelUsed: claudeResponse.modelUsed,
+        tokensUsed: claudeResponse.tokensUsed,
+        costBRL: claudeResponse.costBRL,
+        cached: claudeResponse.cached,
+        apiKeyConfigured: !!process.env.ANTHROPIC_API_KEY
+      },
       usage: usageStats
-    });
+    };
 
+    return res.status(200).json(result);
   } catch (error) {
-    console.error('Chat API error:', error);
-
-    // Handle specific error types
-    if (error instanceof Error) {
-      if (error.message.includes('orçamento')) {
-        return res.status(429).json({
-          success: false,
-          error: error.message
-        });
-      }
-
-      if (error.message.includes('rate limit')) {
-        return res.status(429).json({
-          success: false,
-          error: 'Muitas requisições. Aguarde um momento e tente novamente.'
-        });
-      }
+    console.error('Chat error:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: 'Message is required',
+        details: error.errors
+      });
     }
-
-    return res.status(500).json({
-      success: false,
-      error: 'Erro interno do servidor. Tente novamente em alguns instantes.'
+    return res.status(400).json({ 
+      error: 'Invalid request data',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
-}
-
-// Export config for larger request body sizes
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
 } 

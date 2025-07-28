@@ -49,6 +49,10 @@ The goal is quality delivery, not just checking boxes.]]
    - [ ] All required integration tests (if applicable) as per the story and `Operational Guidelines` Testing Strategy are implemented.
    - [ ] All tests (unit, integration, E2E if applicable) pass successfully.
    - [ ] Test coverage meets project standards (if defined).
+   - [ ] **CRITICAL**: 100% test coverage achieved for all new code.
+   - [ ] **CRITICAL**: All external dependencies (databases, APIs, etc.) are properly mocked in tests.
+   - [ ] **CRITICAL**: All tests pass with 100% success rate before marking task complete.
+   - [ ] **CRITICAL**: QA agent validation completed and confirmed 100% test pass rate.
 
 4. **Functionality & Verification:**
 

@@ -1,3 +1,6 @@
+// Mock Redis storage
+const mockRedisStorage = new Map();
+
 jest.mock('../lib/redis-client', () => ({
   RedisCache: jest.fn().mockImplementation(() => ({
     setSession: jest.fn(),
@@ -20,11 +23,72 @@ jest.mock('../lib/redis-client', () => ({
     keys: jest.fn(),
     ttl: jest.fn(),
     expire: jest.fn(),
-    hset: jest.fn().mockResolvedValue(1),
-    hgetall: jest.fn().mockResolvedValue({}), // Return empty object instead of null
-    hget: jest.fn().mockResolvedValue(null),
+    hset: jest.fn().mockImplementation((key, field, value) => {
+      if (!mockRedisStorage.has(key)) {
+        mockRedisStorage.set(key, new Map());
+      }
+      mockRedisStorage.get(key).set(field, value);
+      return Promise.resolve(1);
+    }),
+    hgetall: jest.fn().mockImplementation((key) => {
+      const hash = mockRedisStorage.get(key);
+      if (!hash) return Promise.resolve({});
+      const result: Record<string, any> = {};
+      for (const [field, value] of hash.entries()) {
+        result[field] = value;
+      }
+      return Promise.resolve(result);
+    }),
+    hget: jest.fn().mockImplementation((key, field) => {
+      const hash = mockRedisStorage.get(key);
+      if (!hash) return Promise.resolve(null);
+      return Promise.resolve(hash.get(field) || null);
+    }),
   }))
 }));
+
+// Mock the Redis client directly
+jest.mock('ioredis', () => {
+  const MockRedis = jest.fn().mockImplementation(() => ({
+    hset: jest.fn().mockImplementation((key, field, value) => {
+      if (!mockRedisStorage.has(key)) {
+        mockRedisStorage.set(key, new Map());
+      }
+      mockRedisStorage.get(key).set(field, value);
+      return Promise.resolve(1);
+    }),
+    hgetall: jest.fn().mockImplementation((key) => {
+      const hash = mockRedisStorage.get(key);
+      if (!hash) return Promise.resolve({});
+      const result: Record<string, any> = {};
+      for (const [field, value] of hash.entries()) {
+        result[field] = value;
+      }
+      return Promise.resolve(result);
+    }),
+    hget: jest.fn().mockImplementation((key, field) => {
+      const hash = mockRedisStorage.get(key);
+      if (!hash) return Promise.resolve(null);
+      return Promise.resolve(hash.get(field) || null);
+    }),
+    hdel: jest.fn().mockImplementation((key, field) => {
+      const hash = mockRedisStorage.get(key);
+      if (hash) {
+        hash.delete(field);
+      }
+      return Promise.resolve(1);
+    }),
+    get: jest.fn().mockImplementation((key) => {
+      return Promise.resolve(mockRedisStorage.get(key) || null);
+    }),
+    set: jest.fn().mockImplementation((key, value) => {
+      mockRedisStorage.set(key, value);
+      return Promise.resolve('OK');
+    }),
+  }));
+  
+  return { Redis: MockRedis };
+});
 
 import { BrazilianPaymentSystem } from '../lib/payment-system';
 import { RedisCache } from '../lib/redis-client';
@@ -36,6 +100,7 @@ describe('BrazilianPaymentSystem', () => {
   beforeEach(() => {
     paymentSystem = new BrazilianPaymentSystem();
     jest.clearAllMocks();
+    mockRedisStorage.clear();
   });
 
   describe('PIX Key Management', () => {
@@ -685,9 +750,11 @@ describe('BrazilianPaymentSystem', () => {
   describe('Confidence Calculations', () => {
     test('should calculate PIX confidence correctly', async () => {
       // Setup PIX key first
-      const mockHset = jest.fn().mockResolvedValue(1);
-      (paymentSystem as any).redis.hset = mockHset;
       await paymentSystem.generatePIXKey('user123', 'email', 'test@example.com');
+
+      // Debug: Check if PIX keys were stored
+      const pixKeys = await paymentSystem.getPIXKeys('user123');
+      console.log('PIX Keys:', pixKeys);
 
       const suggestions = await paymentSystem.generatePaymentSuggestions(
         'user123',
@@ -701,6 +768,7 @@ describe('BrazilianPaymentSystem', () => {
         }
       );
 
+      console.log('Suggestions:', suggestions);
       const pixSuggestion = suggestions.find(s => s.method === 'pix');
       expect(pixSuggestion).toBeDefined();
       expect(pixSuggestion?.confidence).toBeGreaterThan(0.7);
@@ -745,8 +813,6 @@ describe('BrazilianPaymentSystem', () => {
   describe('Regional Factors', () => {
     test('should include regional factors in suggestions', async () => {
       // Setup PIX key first
-      const mockHset = jest.fn().mockResolvedValue(1);
-      (paymentSystem as any).redis.hset = mockHset;
       await paymentSystem.generatePIXKey('user123', 'email', 'test@example.com');
 
       const suggestions = await paymentSystem.generatePaymentSuggestions(
@@ -769,8 +835,6 @@ describe('BrazilianPaymentSystem', () => {
 
     test('should handle different regions', async () => {
       // Setup PIX key first
-      const mockHset = jest.fn().mockResolvedValue(1);
-      (paymentSystem as any).redis.hset = mockHset;
       await paymentSystem.generatePIXKey('user123', 'email', 'test@example.com');
 
       const regions = ['sao_paulo', 'rio_de_janeiro', 'minas_gerais'];

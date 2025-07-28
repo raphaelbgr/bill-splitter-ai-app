@@ -105,6 +105,9 @@ export class BrazilianPaymentSystem {
    */
   async getPIXKeys(userId: string): Promise<PIXKey[]> {
     const keys = await this.redis.hgetall(`user:${userId}:pix_keys`);
+    if (!keys || Object.keys(keys).length === 0) {
+      return [];
+    }
     return Object.values(keys).map(key => JSON.parse(key));
   }
 

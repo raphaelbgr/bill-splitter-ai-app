@@ -264,7 +264,7 @@ export class IntelligentAutomationSystem {
     const culturalContext = nlpResult.culturalContext;
 
     // Generate recommendations based on scenario
-    switch (culturalContext.scenario) {
+    switch (culturalContext?.scenario) {
       case 'churrasco':
         recommendations.push({
           groupName: 'Churrasco da Galera',
@@ -555,7 +555,7 @@ export class IntelligentAutomationSystem {
       reasoning: 'Divisão igual entre todos os participantes',
       participants,
       amounts,
-      culturalContext: culturalContext.scenario || 'casual',
+      culturalContext: culturalContext?.scenario || 'casual',
       alternatives: []
     };
   }
@@ -566,7 +566,7 @@ export class IntelligentAutomationSystem {
     culturalContext: any,
     userPreferences: any
   ): PredictiveSplittingSuggestion | null {
-    if (culturalContext.scenario === 'churrasco') {
+    if (culturalContext?.scenario === 'churrasco') {
       return {
         method: 'equal',
         confidence: 0.9,
@@ -578,7 +578,7 @@ export class IntelligentAutomationSystem {
       };
     }
 
-    if (culturalContext.scenario === 'happy_hour') {
+    if (culturalContext?.scenario === 'happy_hour') {
       return {
         method: 'by_consumption',
         confidence: 0.8,
@@ -590,7 +590,7 @@ export class IntelligentAutomationSystem {
       };
     }
 
-    if (culturalContext.scenario === 'vaquinha') {
+    if (culturalContext?.scenario === 'vaquinha') {
       return {
         method: 'vaquinha',
         confidence: 0.9,
@@ -646,7 +646,7 @@ export class IntelligentAutomationSystem {
         reasoning: 'Valor pequeno, pode acertar depois',
         participants,
         amounts: { [participants[0]]: amount },
-        culturalContext: culturalContext.scenario || 'casual',
+        culturalContext: culturalContext?.scenario || 'casual',
         alternatives: []
       };
     }
@@ -695,7 +695,7 @@ export class IntelligentAutomationSystem {
     recipient: string,
     culturalContext: any
   ): { gentle: string; friendly: string; urgent: string } {
-    const scenario = culturalContext.scenario || 'casual';
+    const scenario = culturalContext?.scenario || 'casual';
     // Use Brazilian currency format with comma as decimal separator
     const formattedAmount = `R$ ${amount.toFixed(2).replace('.', ',')}`;
     
@@ -718,12 +718,12 @@ export class IntelligentAutomationSystem {
 
     if (culturalContext && culturalContext.scenario) {
       // Convert scenario names to proper format and show original keywords
-      let scenarioDisplay = culturalContext.scenario;
-      if (culturalContext.scenario === 'rodizio') {
+      let scenarioDisplay = culturalContext?.scenario;
+      if (culturalContext?.scenario === 'rodizio') {
         scenarioDisplay = 'rodízio';
-      } else if (culturalContext.scenario === 'aniversario') {
+      } else if (culturalContext?.scenario === 'aniversario') {
         scenarioDisplay = 'aniversário';
-      } else if (culturalContext.scenario === 'bar_happy_hour') {
+      } else if (culturalContext?.scenario === 'bar_happy_hour') {
         scenarioDisplay = 'balada'; // Show the original keyword that was detected
       }
       descriptions.push(`Cenário: ${scenarioDisplay}`);

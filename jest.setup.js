@@ -32,98 +32,151 @@ jest.mock('@supabase/supabase-js', () => ({
       }),
     },
     from: jest.fn((table) => {
-      const mockTable = {
-        select: jest.fn().mockReturnThis(),
-        insert: jest.fn().mockReturnThis(),
-        update: jest.fn().mockReturnThis(),
-        delete: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn(),
-        then: jest.fn(),
+      // Create a chainable mock object
+      const createChainableMock = () => {
+        const mock = {
+          select: jest.fn().mockReturnThis(),
+          insert: jest.fn().mockReturnThis(),
+          update: jest.fn().mockReturnThis(),
+          delete: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          ne: jest.fn().mockReturnThis(),
+          gt: jest.fn().mockReturnThis(),
+          gte: jest.fn().mockReturnThis(),
+          lt: jest.fn().mockReturnThis(),
+          lte: jest.fn().mockReturnThis(),
+          like: jest.fn().mockReturnThis(),
+          ilike: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          not: jest.fn().mockReturnThis(),
+          or: jest.fn().mockReturnThis(),
+          and: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockReturnThis(),
+          order: jest.fn().mockReturnThis(),
+          range: jest.fn().mockReturnThis(),
+          single: jest.fn().mockReturnThis(),
+          then: jest.fn(),
+        };
+
+        // Mock specific table responses
+        if (table === 'user_profiles') {
+          mock.select.mockResolvedValue({
+            data: [{
+              id: 'test-user-id',
+              email: 'test@example.com',
+              display_name: 'Test User',
+              timezone: 'America/Sao_Paulo',
+              language: 'pt-BR',
+              currency: 'BRL',
+              notification_preferences: {
+                email: true,
+                push: true,
+                sms: false,
+              },
+              ai_preferences: {
+                language: 'pt-BR',
+                formalityLevel: 'informal',
+                region: 'BR',
+                paymentPreference: 'pix'
+              },
+              consent_version: '2024.1',
+              marketing_consent: false,
+              ai_processing_consent: true,
+              last_active_at: new Date().toISOString(),
+              created_at: new Date().toISOString(),
+            }],
+            error: null
+          });
+          mock.insert.mockResolvedValue({
+            data: [{
+              id: 'test-user-id',
+              email: 'test@example.com',
+              display_name: 'Test User',
+              timezone: 'America/Sao_Paulo',
+              language: 'pt-BR',
+              currency: 'BRL',
+              notification_preferences: {
+                email: true,
+                push: true,
+                sms: false,
+              },
+              ai_preferences: {
+                language: 'pt-BR',
+                formalityLevel: 'informal',
+                region: 'BR',
+                paymentPreference: 'pix'
+              },
+              consent_version: '2024.1',
+              marketing_consent: false,
+              ai_processing_consent: true,
+              last_active_at: new Date().toISOString(),
+              created_at: new Date().toISOString(),
+            }],
+            error: null
+          });
+          mock.update.mockResolvedValue({
+            data: null,
+            error: null
+          });
+        } else if (table === 'group_members') {
+          mock.select.mockResolvedValue({
+            data: [
+              {
+                groups: {
+                  id: 'test-group-id',
+                  name: 'Test Group',
+                  description: 'Test group description',
+                  group_type: 'friends',
+                  default_split_method: 'equal',
+                  currency: 'BRL',
+                  ai_enabled: true,
+                  ai_suggestions_enabled: true,
+                  created_at: new Date().toISOString(),
+                }
+              }
+            ],
+            error: null
+          });
+        } else if (table === 'conversations') {
+          mock.select.mockResolvedValue({
+            data: [{
+              id: 'test-conversation-id',
+              user_id: 'test-user-id',
+              title: 'Test Conversation',
+              created_at: new Date().toISOString(),
+              retention_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            }],
+            error: null
+          });
+        } else {
+          // Default response for other tables
+          mock.select.mockResolvedValue({
+            data: [{
+              id: 'test-id',
+              created_at: new Date().toISOString(),
+            }],
+            error: null
+          });
+          mock.insert.mockResolvedValue({
+            data: [{
+              id: 'test-id',
+              created_at: new Date().toISOString(),
+            }],
+            error: null
+          });
+        }
+
+        return mock;
       };
 
-      // Mock specific table responses
-      if (table === 'user_profiles') {
-        mockTable.select.mockResolvedValue({
-          data: {
-            id: 'test-user-id',
-            email: 'test@example.com',
-            display_name: 'Test User',
-            timezone: 'America/Sao_Paulo',
-            language: 'pt-BR',
-            currency: 'BRL',
-            notification_preferences: {
-              email: true,
-              push: true,
-              sms: false,
-            },
-            ai_preferences: {
-              language: 'pt-BR',
-              formalityLevel: 'informal',
-              region: 'BR',
-              paymentPreference: 'pix'
-            },
-            consent_version: '2024.1',
-            marketing_consent: false,
-            ai_processing_consent: true,
-            last_active_at: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-          },
-          error: null
-        });
-        mockTable.insert.mockResolvedValue({
-          data: {
-            id: 'test-user-id',
-            email: 'test@example.com',
-            display_name: 'Test User',
-            timezone: 'America/Sao_Paulo',
-            language: 'pt-BR',
-            currency: 'BRL',
-            notification_preferences: {
-              email: true,
-              push: true,
-              sms: false,
-            },
-            ai_preferences: {
-              language: 'pt-BR',
-              formalityLevel: 'informal',
-              region: 'BR',
-              paymentPreference: 'pix'
-            },
-            consent_version: '2024.1',
-            marketing_consent: false,
-            ai_processing_consent: true,
-            last_active_at: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-          },
-          error: null
-        });
-        mockTable.update.mockResolvedValue({
-          data: null,
-          error: null
-        });
-      } else if (table === 'group_members') {
-        mockTable.select.mockResolvedValue({
-          data: [
-            {
-              groups: {
-                id: 'test-group-id',
-                name: 'Test Group',
-                description: 'Test group description',
-                group_type: 'friends',
-                default_split_method: 'equal',
-                currency: 'BRL',
-                ai_enabled: true,
-                ai_suggestions_enabled: true,
-                created_at: new Date().toISOString(),
-              }
-            }
-          ],
-          error: null
-        });
-      }
-
-      return mockTable;
+      const mock = createChainableMock();
+      
+      // Override the then method to return a Promise
+      mock.then = function(resolve, reject) {
+        return Promise.resolve(mock).then(resolve, reject);
+      };
+      
+      return mock;
     }),
     storage: {
       from: jest.fn(() => ({

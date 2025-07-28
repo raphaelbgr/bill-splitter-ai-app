@@ -858,12 +858,16 @@ FORMATO DE RESPOSTA:
     const hasPeople = peopleKeywords.some(keyword => lowerMessage.includes(keyword));
     
     if (numbers.length >= 2 && hasPeople) {
-      const total = parseInt(numbers[0] || '0');
-      const people = parseInt(numbers[1] || '0');
-      
-      if (total && people && people > 0) {
-        const perPerson = total / people;
-        return `Perfeito! Dividindo R$ ${total} entre ${people} pessoas:\n\n💰 Cada pessoa paga: R$ ${perPerson.toFixed(2)}\n\n💡 Dica: Use PIX para facilitar o pagamento!`;
+      // Look for currency amounts first (numbers after R$)
+      const currencyMatches = message.match(/R\$\s*(\d+)/g);
+      if (currencyMatches && currencyMatches.length > 0) {
+        const total = parseInt(currencyMatches[0].replace('R$', '').trim());
+        const people = parseInt(numbers.find(n => parseInt(n) < total) || numbers[0] || '0');
+        
+        if (total && people && people > 0) {
+          const perPerson = total / people;
+          return `Perfeito! Dividindo R$ ${total} entre ${people} pessoas:\n\n💰 Cada pessoa paga: R$ ${perPerson.toFixed(2)}\n\n💡 Dica: Use PIX para facilitar o pagamento!`;
+        }
       }
     }
     

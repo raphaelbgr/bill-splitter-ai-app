@@ -1,7 +1,7 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 export function createClient() {
   return createBrowserClient(
@@ -39,7 +39,7 @@ export function createServerSupabaseClient() {
 
 // For pages API routes (doesn't use next/headers)
 export function createPagesSupabaseClient() {
-  return createClient(
+  return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )

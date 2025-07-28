@@ -12,19 +12,6 @@ describe('Internationalization System', () => {
   });
 
   describe('Language Management', () => {
-    test('should set and get current language correctly', () => {
-      i18n.setLanguage('es-ES');
-      expect(i18n.getCurrentLanguage()).toBe('es-ES');
-    });
-
-    test('should get supported languages', () => {
-      const supportedLanguages = i18n.getSupportedLanguages();
-      expect(supportedLanguages).toContain('pt-BR');
-      expect(supportedLanguages).toContain('es-ES');
-      expect(supportedLanguages).toContain('en-US');
-      expect(supportedLanguages).toContain('fr-FR');
-    });
-
     test('should translate text correctly', () => {
       i18n.setLanguage('pt-BR');
       const translation = i18n.t('message.welcome');

@@ -665,18 +665,14 @@ export class RachaAII18n {
 
   // Get nested translation value
   private getNestedTranslation(obj: Translation, key: string): string | undefined {
-    const keys = key.split('.');
-    let current: any = obj;
-
-    for (const k of keys) {
-      if (current && typeof current === 'object' && k in current) {
-        current = current[k];
-      } else {
-        return undefined;
-      }
+    
+    // Check if the key exists directly in the object
+    if (key in obj) {
+      const result = obj[key];
+      return typeof result === 'string' ? result : undefined;
     }
-
-    return typeof current === 'string' ? current : undefined;
+    
+    return undefined;
   }
 
   // Interpolate parameters in translation

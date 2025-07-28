@@ -1,3 +1,36 @@
+// Mock the modules that depend on Redis
+jest.mock('../lib/redis-client', () => ({
+  redis: {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue('OK'),
+    setex: jest.fn().mockResolvedValue('OK'),
+    incr: jest.fn().mockResolvedValue(1),
+    expire: jest.fn().mockResolvedValue(1),
+    del: jest.fn().mockResolvedValue(1),
+    keys: jest.fn().mockResolvedValue([]),
+    hset: jest.fn().mockResolvedValue(1),
+    hget: jest.fn().mockResolvedValue(null),
+    hgetall: jest.fn().mockResolvedValue({}),
+    on: jest.fn(),
+    connect: jest.fn().mockResolvedValue(undefined),
+    disconnect: jest.fn().mockResolvedValue(undefined),
+  }
+}));
+
+jest.mock('../lib/payment-system', () => ({
+  BrazilianPaymentSystem: jest.fn().mockImplementation(() => ({
+    generatePIXKey: jest.fn().mockResolvedValue('test-pix-key'),
+    validatePIXKey: jest.fn().mockResolvedValue(true),
+    getPaymentSuggestions: jest.fn().mockResolvedValue([]),
+    processPayment: jest.fn().mockResolvedValue({ success: true }),
+    getPaymentPreferences: jest.fn().mockResolvedValue({
+      preferredMethod: 'pix',
+      region: 'BR',
+      currency: 'BRL'
+    }),
+  }))
+}));
+
 import { BrazilianMobilePaymentService, MobilePaymentRequest, MobileWalletIntegration } from '../lib/mobile-payment-service';
 
 describe('Brazilian Mobile Payment Service', () => {

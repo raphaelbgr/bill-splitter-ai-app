@@ -3,6 +3,8 @@ import '@testing-library/jest-dom';
 // Set up test environment variables (excluding Supabase)
 process.env.CLAUDE_API_KEY = 'test-claude-key';
 process.env.REDIS_URL = 'redis://localhost:6379';
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
 
 // Mock Supabase client to prevent environment variable usage
 jest.mock('@supabase/supabase-js', () => ({
@@ -13,16 +15,116 @@ jest.mock('@supabase/supabase-js', () => ({
       signOut: jest.fn(),
       getUser: jest.fn(),
       getSession: jest.fn(),
+      signInWithPassword: jest.fn().mockResolvedValue({
+        data: {
+          user: {
+            id: 'test-user-id',
+            email: 'test@example.com',
+            user_metadata: { full_name: 'Test User' }
+          },
+          session: {
+            access_token: 'test-access-token',
+            refresh_token: 'test-refresh-token',
+            expires_at: Math.floor(Date.now() / 1000) + 3600
+          }
+        },
+        error: null
+      }),
     },
-    from: jest.fn(() => ({
-      select: jest.fn().mockReturnThis(),
-      insert: jest.fn().mockReturnThis(),
-      update: jest.fn().mockReturnThis(),
-      delete: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      single: jest.fn(),
-      then: jest.fn(),
-    })),
+    from: jest.fn((table) => {
+      const mockTable = {
+        select: jest.fn().mockReturnThis(),
+        insert: jest.fn().mockReturnThis(),
+        update: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn(),
+        then: jest.fn(),
+      };
+
+      // Mock specific table responses
+      if (table === 'user_profiles') {
+        mockTable.select.mockResolvedValue({
+          data: {
+            id: 'test-user-id',
+            email: 'test@example.com',
+            display_name: 'Test User',
+            timezone: 'America/Sao_Paulo',
+            language: 'pt-BR',
+            currency: 'BRL',
+            notification_preferences: {
+              email: true,
+              push: true,
+              sms: false,
+            },
+            ai_preferences: {
+              language: 'pt-BR',
+              formalityLevel: 'informal',
+              region: 'BR',
+              paymentPreference: 'pix'
+            },
+            consent_version: '2024.1',
+            marketing_consent: false,
+            ai_processing_consent: true,
+            last_active_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          },
+          error: null
+        });
+        mockTable.insert.mockResolvedValue({
+          data: {
+            id: 'test-user-id',
+            email: 'test@example.com',
+            display_name: 'Test User',
+            timezone: 'America/Sao_Paulo',
+            language: 'pt-BR',
+            currency: 'BRL',
+            notification_preferences: {
+              email: true,
+              push: true,
+              sms: false,
+            },
+            ai_preferences: {
+              language: 'pt-BR',
+              formalityLevel: 'informal',
+              region: 'BR',
+              paymentPreference: 'pix'
+            },
+            consent_version: '2024.1',
+            marketing_consent: false,
+            ai_processing_consent: true,
+            last_active_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          },
+          error: null
+        });
+        mockTable.update.mockResolvedValue({
+          data: null,
+          error: null
+        });
+      } else if (table === 'group_members') {
+        mockTable.select.mockResolvedValue({
+          data: [
+            {
+              groups: {
+                id: 'test-group-id',
+                name: 'Test Group',
+                description: 'Test group description',
+                group_type: 'friends',
+                default_split_method: 'equal',
+                currency: 'BRL',
+                ai_enabled: true,
+                ai_suggestions_enabled: true,
+                created_at: new Date().toISOString(),
+              }
+            }
+          ],
+          error: null
+        });
+      }
+
+      return mockTable;
+    }),
     storage: {
       from: jest.fn(() => ({
         upload: jest.fn(),
@@ -32,6 +134,37 @@ jest.mock('@supabase/supabase-js', () => ({
     },
   })),
 }));
+
+// Mock Redis to prevent connection issues in tests
+jest.mock('ioredis', () => {
+  const mockRedis = {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue('OK'),
+    setex: jest.fn().mockResolvedValue('OK'),
+    incr: jest.fn().mockResolvedValue(1),
+    expire: jest.fn().mockResolvedValue(1),
+    del: jest.fn().mockResolvedValue(1),
+    keys: jest.fn().mockResolvedValue([]),
+    hset: jest.fn().mockResolvedValue(1),
+    hget: jest.fn().mockResolvedValue(null),
+    hgetall: jest.fn().mockResolvedValue({}),
+    zadd: jest.fn().mockResolvedValue(1),
+    zremrangebyscore: jest.fn().mockResolvedValue(1),
+    zcard: jest.fn().mockResolvedValue(1),
+    on: jest.fn(),
+    connect: jest.fn().mockResolvedValue(undefined),
+    disconnect: jest.fn().mockResolvedValue(undefined),
+  };
+  
+  // Create a constructor function that returns the mock
+  const MockRedisConstructor = jest.fn().mockImplementation(() => mockRedis);
+  
+  // Handle both named and default exports
+  return {
+    Redis: MockRedisConstructor,
+    default: MockRedisConstructor,
+  };
+});
 
 // Mock console methods to reduce noise in tests
 global.console = {

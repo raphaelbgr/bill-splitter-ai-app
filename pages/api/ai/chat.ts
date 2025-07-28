@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { z } from 'zod';
 import { RachaAIClaudeClient } from '../../../lib/claude-client';
+import { rateLimit } from '../../../lib/rate-limit';
 
 const ChatSchema = z.object({
   userId: z.string().optional(),
@@ -44,6 +45,19 @@ export default async function handler(
 
   try {
     const validatedData = ChatSchema.parse(req.body);
+    
+    // Apply rate limiting
+    const rateLimitResult = await rateLimit(req, {
+      userId: validatedData.userId,
+      claudeLimit: 10
+    });
+    
+    if (rateLimitResult.error) {
+      return res.status(429).json({ 
+        error: 'Rate limit exceeded',
+        retryAfter: rateLimitResult.resetTime
+      });
+    }
     
     // Initialize Claude client
     const claudeClient = new RachaAIClaudeClient();

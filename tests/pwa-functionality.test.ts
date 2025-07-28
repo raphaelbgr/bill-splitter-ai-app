@@ -198,14 +198,14 @@ describe('PWA Functionality Tests', () => {
       expect(registration.waiting).toBeDefined();
     });
 
-    it('supports service worker messaging', () => {
-      const registration = mockServiceWorker.register();
+    it('supports service worker messaging', async () => {
+      const registration = await mockServiceWorker.register();
       expect(registration.active.postMessage).toBeDefined();
       expect(registration.waiting.postMessage).toBeDefined();
     });
 
-    it('handles service worker events', () => {
-      const registration = mockServiceWorker.register();
+    it('handles service worker events', async () => {
+      const registration = await mockServiceWorker.register();
       expect(registration.addEventListener).toBeDefined();
     });
   });

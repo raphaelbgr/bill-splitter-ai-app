@@ -7,8 +7,8 @@ describe('Supabase Integration Tests', () => {
   let testClient: any;
 
   beforeEach(() => {
-    // Create test client
-    testClient = createClient(mockSupabaseUrl, mockSupabaseKey);
+    // Create test client with mock values
+    testClient = createClient('https://mock.supabase.co', 'mock-key');
   });
 
   describe('Database Schema Tests', () => {
